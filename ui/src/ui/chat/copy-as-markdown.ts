@@ -34,7 +34,7 @@ function createCopyButton(options: CopyButtonOptions): TemplateResult {
   const idleLabel = options.label ?? COPY_LABEL;
   return html`
     <button
-      class="chat-copy-btn"
+      class="chat-copy-btn cp-message-action"
       type="button"
       title=${idleLabel}
       aria-label=${idleLabel}

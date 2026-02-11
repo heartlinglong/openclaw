@@ -3,3 +3,10 @@
 @import "./chat/grouped.css";
 @import "./chat/tool-cards.css";
 @import "./chat/sidebar.css";
+
+/* AgentHR webchat-ui overrides */
+@import "./chat/webchat-ui/codepilot-theme.css";
+@import "./chat/webchat-ui/codepilot-layout.css";
+@import "./chat/webchat-ui/codepilot-components.css";
+@import "./chat/webchat-ui/codepilot-input.css";
+@import "./chat/webchat-ui/codepilot-chat.css";

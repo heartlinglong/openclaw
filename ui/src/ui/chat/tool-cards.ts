@@ -74,7 +74,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
 
   return html`
     <div
-      class="chat-tool-card ${canClick ? "chat-tool-card--clickable" : ""}"
+      class="chat-tool-card cp-tool-card ${canClick ? "chat-tool-card--clickable" : ""}"
       @click=${handleClick}
       role=${canClick ? "button" : nothing}
       tabindex=${canClick ? "0" : nothing}
@@ -90,9 +90,9 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
           : nothing
       }
     >
-      <div class="chat-tool-card__header">
-        <div class="chat-tool-card__title">
-          <span class="chat-tool-card__icon">${icons[display.icon]}</span>
+      <div class="chat-tool-card__header cp-tool-card__header">
+        <div class="chat-tool-card__title cp-tool-card__title">
+          <span class="chat-tool-card__icon cp-tool-card__icon">${icons[display.icon]}</span>
           <span>${display.label}</span>
         </div>
         ${
@@ -102,7 +102,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
         }
         ${isEmpty && !canClick ? html`<span class="chat-tool-card__status">${icons.check}</span>` : nothing}
       </div>
-      ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
+      ${detail ? html`<div class="chat-tool-card__detail cp-tool-card__params">${detail}</div>` : nothing}
       ${
         isEmpty
           ? html`
@@ -112,10 +112,10 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       }
       ${
         showCollapsed
-          ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
+          ? html`<div class="chat-tool-card__preview mono cp-tool-card__result">${getTruncatedPreview(card.text!)}</div>`
           : nothing
       }
-      ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
+      ${showInline ? html`<div class="chat-tool-card__inline mono cp-tool-card__result">${card.text}</div>` : nothing}
     </div>
   `;
 }

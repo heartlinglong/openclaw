@@ -158,17 +158,17 @@ function renderAttachmentPreview(props: ChatProps) {
   }
 
   return html`
-    <div class="chat-attachments">
+    <div class="chat-attachments cp-attachments">
       ${attachments.map(
         (att) => html`
-          <div class="chat-attachment">
+          <div class="chat-attachment cp-attachment cp-attachment--image">
             <img
               src=${att.dataUrl}
               alt="Attachment preview"
-              class="chat-attachment__img"
+              class="chat-attachment__img cp-attachment__preview"
             />
             <button
-              class="chat-attachment__remove"
+              class="chat-attachment__remove cp-attachment__remove"
               type="button"
               aria-label="Remove attachment"
               @click=${() => {
@@ -208,7 +208,7 @@ export function renderChat(props: ChatProps) {
   const sidebarOpen = Boolean(props.sidebarOpen && props.onCloseSidebar);
   const thread = html`
     <div
-      class="chat-thread"
+      class="chat-thread cp-chat-thread"
       role="log"
       aria-live="polite"
       @scroll=${props.onChatScroll}
@@ -253,7 +253,7 @@ export function renderChat(props: ChatProps) {
   `;
 
   return html`
-    <section class="card chat">
+    <section class="card chat cp-chat">
       ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
 
       ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
@@ -314,8 +314,8 @@ export function renderChat(props: ChatProps) {
       ${
         props.queue.length
           ? html`
-            <div class="chat-queue" role="status" aria-live="polite">
-              <div class="chat-queue__title">Queued (${props.queue.length})</div>
+            <div class="chat-queue cp-queue-indicator" role="status" aria-live="polite">
+              <div class="chat-queue__title cp-queue-indicator__count">Queued (${props.queue.length})</div>
               <div class="chat-queue__list">
                 ${props.queue.map(
                   (item) => html`
@@ -357,12 +357,13 @@ export function renderChat(props: ChatProps) {
           : nothing
       }
 
-      <div class="chat-compose">
+      <div class="chat-compose cp-compose">
         ${renderAttachmentPreview(props)}
-        <div class="chat-compose__row">
+        <div class="chat-compose__row cp-input-wrapper ${!props.connected ? "cp-input-wrapper--disabled" : ""}" data-has-content=${props.draft.trim().length > 0 ? "true" : "false"}>
           <label class="field chat-compose__field">
             <span>Message</span>
             <textarea
+              class="cp-input"
               ${ref((el) => el && adjustTextareaHeight(el as HTMLTextAreaElement))}
               .value=${props.draft}
               ?disabled=${!props.connected}
@@ -393,21 +394,26 @@ export function renderChat(props: ChatProps) {
               placeholder=${composePlaceholder}
             ></textarea>
           </label>
-          <div class="chat-compose__actions">
-            <button
-              class="btn"
-              ?disabled=${!props.connected || (!canAbort && props.sending)}
-              @click=${canAbort ? props.onAbort : props.onNewSession}
-            >
-              ${canAbort ? "Stop" : "New session"}
-            </button>
-            <button
-              class="btn primary"
-              ?disabled=${!props.connected}
-              @click=${props.onSend}
-            >
-              ${isBusy ? "Queue" : "Send"}<kbd class="btn-kbd">↵</kbd>
-            </button>
+          <div class="chat-compose__actions cp-input-toolbar">
+            <div class="cp-input-toolbar-left">
+              <span class="cp-char-counter">Shift+↵ 换行</span>
+            </div>
+            <div class="cp-input-toolbar-right">
+              <button
+                class="btn cp-btn cp-btn--secondary"
+                ?disabled=${!props.connected || (!canAbort && props.sending)}
+                @click=${canAbort ? props.onAbort : props.onNewSession}
+              >
+                ${canAbort ? "Stop" : "New session"}
+              </button>
+              <button
+                class="btn primary cp-send-btn"
+                ?disabled=${!props.connected}
+                @click=${props.onSend}
+              >
+                ${isBusy ? "Queue" : "Send"}<kbd class="btn-kbd cp-send-btn__shortcut">↵</kbd>
+              </button>
+            </div>
           </div>
         </div>
       </div>
