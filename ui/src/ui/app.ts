@@ -276,8 +276,14 @@ export class OpenClawApp extends LitElement {
   @state() hrCoreOrgUnitsLoading = false;
   @state() hrCoreOrgUnits: HrCoreOrgUnit[] = [];
   @state() hrCoreOrgExpanded: Record<string, boolean> = { ROOT: true };
+  @state() hrCorePositionsLoading = false;
   @state() hrCorePositions: HrCorePosition[] = [];
   @state() hrCoreLegalEntities: HrCoreLegalEntity[] = [];
+  // Org tree extras: expand positions under org units, then employees under positions.
+  @state() hrCorePositionExpanded: Record<string, boolean> = {};
+  @state() hrCorePositionEmployeesLoading: Record<string, boolean> = {};
+  @state() hrCorePositionEmployees: Record<string, HrCoreEmployee[]> = {};
+  @state() hrCorePositionEmployeesError: Record<string, string> = {};
   @state() hrCoreSearchNotice: string | null = null;
   private hrCoreSearchTimer: number | null = null;
 
@@ -363,6 +369,10 @@ export class OpenClawApp extends LitElement {
 
   protected firstUpdated() {
     handleFirstUpdated(this as unknown as Parameters<typeof handleFirstUpdated>[0]);
+    if (this.hrCoreSettings.token?.trim()) {
+      // Token can be persisted across reloads; preload lists so the directory tree is usable.
+      void this.ensureHrCoreStaticListsLoaded().catch((err) => (this.hrCoreError = String(err)));
+    }
   }
 
   disconnectedCallback() {
@@ -403,6 +413,8 @@ export class OpenClawApp extends LitElement {
       const res = await hrCoreLogin(this.hrCoreSettings, username, password);
       this.setHrCoreSettings({ ...this.hrCoreSettings, token: res.token, user: res.user });
       this.hrCoreLoginPassword = "";
+      // Preload static lists so Directory can render org tree + positions immediately.
+      void this.ensureHrCoreStaticListsLoaded().catch((err) => (this.hrCoreError = String(err)));
     } catch (err) {
       this.hrCoreError = String(err);
     } finally {
@@ -415,6 +427,14 @@ export class OpenClawApp extends LitElement {
     this.setHrCoreSettings({ ...this.hrCoreSettings, token: "", user: null });
     this.hrCoreSearchResult = null;
     this.hrCoreSelected = null;
+    this.hrCoreOrgUnits = [];
+    this.hrCorePositions = [];
+    this.hrCoreLegalEntities = [];
+    this.hrCoreOrgExpanded = { ROOT: true };
+    this.hrCorePositionExpanded = {};
+    this.hrCorePositionEmployeesLoading = {};
+    this.hrCorePositionEmployees = {};
+    this.hrCorePositionEmployeesError = {};
   }
 
   setHrCoreQuery(next: string) {
@@ -617,7 +637,13 @@ export class OpenClawApp extends LitElement {
     this.hrCoreOrgUnitsLoading = true;
     this.hrCoreError = null;
     try {
-      this.hrCoreOrgUnits = await hrCoreListOrgUnits(this.hrCoreSettings);
+      // Load org units + positions together so the org tree can render both.
+      const [orgUnits, positions] = await Promise.all([
+        hrCoreListOrgUnits(this.hrCoreSettings),
+        hrCoreListPositions(this.hrCoreSettings),
+      ]);
+      this.hrCoreOrgUnits = orgUnits;
+      this.hrCorePositions = positions;
       // Ensure we have at least one open root for usability.
       if (!("ROOT" in this.hrCoreOrgExpanded)) {
         this.hrCoreOrgExpanded = { ...this.hrCoreOrgExpanded, ROOT: true };
@@ -629,11 +655,74 @@ export class OpenClawApp extends LitElement {
     }
   }
 
+  private async ensureHrCorePositionsLoaded() {
+    if (!this.hrCoreSettings.token.trim()) {
+      throw new Error("HR Core token missing; login first.");
+    }
+    if (this.hrCorePositions.length > 0) return;
+    if (this.hrCorePositionsLoading) return;
+    this.hrCorePositionsLoading = true;
+    try {
+      this.hrCorePositions = await hrCoreListPositions(this.hrCoreSettings);
+    } finally {
+      this.hrCorePositionsLoading = false;
+    }
+  }
+
+  async loadHrPositionEmployees(positionCode: string, opts?: { force?: boolean; limit?: number }) {
+    const key = (positionCode ?? "").trim().toUpperCase();
+    if (!key) return;
+    if (!this.hrCoreSettings.token.trim()) {
+      this.hrCoreError = "HR Core token missing; login first.";
+      return;
+    }
+    const force = Boolean(opts?.force);
+    const limit = opts?.limit ?? 200;
+    if (!force && this.hrCorePositionEmployees[key]) {
+      return;
+    }
+    if (this.hrCorePositionEmployeesLoading[key]) {
+      return;
+    }
+    this.hrCorePositionEmployeesLoading = { ...this.hrCorePositionEmployeesLoading, [key]: true };
+    this.hrCorePositionEmployeesError = { ...this.hrCorePositionEmployeesError, [key]: "" };
+    try {
+      const rows = await hrCoreListEmployees(this.hrCoreSettings, { position_code: key, limit });
+      this.hrCorePositionEmployees = { ...this.hrCorePositionEmployees, [key]: rows };
+    } catch (err) {
+      this.hrCorePositionEmployeesError = {
+        ...this.hrCorePositionEmployeesError,
+        [key]: String(err),
+      };
+    } finally {
+      this.hrCorePositionEmployeesLoading = {
+        ...this.hrCorePositionEmployeesLoading,
+        [key]: false,
+      };
+    }
+  }
+
   toggleHrOrgExpanded(code: string) {
     const key = code.trim();
     if (!key) return;
     const current = Boolean(this.hrCoreOrgExpanded[key]);
-    this.hrCoreOrgExpanded = { ...this.hrCoreOrgExpanded, [key]: !current };
+    const next = !current;
+    this.hrCoreOrgExpanded = { ...this.hrCoreOrgExpanded, [key]: next };
+    // Ensure positions are available when the org tree is being used.
+    if (next) {
+      void this.ensureHrCorePositionsLoaded().catch((err) => (this.hrCoreError = String(err)));
+    }
+  }
+
+  toggleHrPositionExpanded(positionCode: string) {
+    const key = (positionCode ?? "").trim().toUpperCase();
+    if (!key) return;
+    const current = Boolean(this.hrCorePositionExpanded[key]);
+    const next = !current;
+    this.hrCorePositionExpanded = { ...this.hrCorePositionExpanded, [key]: next };
+    if (next) {
+      void this.loadHrPositionEmployees(key);
+    }
   }
 
   async selectHrCoreHit(hit: {

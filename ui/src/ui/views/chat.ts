@@ -88,6 +88,12 @@ export type ChatProps = {
   hrCoreOrgUnitsLoading: boolean;
   hrCoreOrgUnits: HrCoreOrgUnit[];
   hrCoreOrgExpanded: Record<string, boolean>;
+  hrCorePositions: HrCorePosition[];
+  hrCorePositionsLoading: boolean;
+  hrCorePositionExpanded: Record<string, boolean>;
+  hrCorePositionEmployeesLoading: Record<string, boolean>;
+  hrCorePositionEmployees: Record<string, HrCoreEmployee[]>;
+  hrCorePositionEmployeesError: Record<string, string>;
   onHrCoreSettingsChange: (next: HrCoreSettings) => void;
   onHrCoreLoginUsernameChange: (next: string) => void;
   onHrCoreLoginPasswordChange: (next: string) => void;
@@ -96,6 +102,8 @@ export type ChatProps = {
   onHrCoreQueryChange: (next: string) => void;
   onHrOrgUnitsLoad: () => void;
   onHrOrgExpandedToggle: (code: string) => void;
+  onHrPositionExpandedToggle: (positionCode: string) => void;
+  onHrPositionEmployeesLoad: (positionCode: string) => void;
   onHrCoreHitSelect: (hit: {
     kind: "employee" | "orgUnit" | "position" | "legalEntity";
     key: string;
@@ -478,19 +486,42 @@ function renderDirectory(props: ChatProps) {
       byParent.set(k, list);
     }
 
+    const positionsByOrg = new Map<string, HrCorePosition[]>();
+    for (const p of props.hrCorePositions) {
+      const orgCode = p.org_unit?.code;
+      if (!orgCode) continue;
+      const list = positionsByOrg.get(orgCode) ?? [];
+      list.push(p);
+      positionsByOrg.set(orgCode, list);
+    }
+    for (const [k, list] of positionsByOrg.entries()) {
+      list.sort((a, b) => a.code.localeCompare(b.code));
+      positionsByOrg.set(k, list);
+    }
+
+    const pad = (depth: number) => `padding-left: ${8 + depth * 14}px`;
+    const renderSectionLabel = (label: string, depth: number) => html`
+      <div class="ahr-tree__row" style=${pad(depth)}>
+        <span class="ahr-tree__toggle" style="cursor: default;" aria-hidden="true">·</span>
+        <div class="muted" style="padding: 6px 8px;">${label}</div>
+      </div>
+    `;
+
     const renderNode = (row: HrCoreOrgUnit, depth: number) => {
       const children = byParent.get(row.code) ?? [];
       const hasChildren = children.length > 0;
       const expanded = Boolean(props.hrCoreOrgExpanded[row.code]);
+
+      const positions = (positionsByOrg.get(row.code) ?? []).filter((p) => p.status === "ACTIVE");
+
       return html`
-        <div class="ahr-tree__row" style=${`padding-left: ${8 + depth * 14}px`}>
+        <div class="ahr-tree__row" style=${pad(depth)}>
           <button
             class="ahr-tree__toggle"
             type="button"
-            ?disabled=${!hasChildren}
             @click=${() => props.onHrOrgExpandedToggle(row.code)}
           >
-            ${hasChildren ? (expanded ? "▾" : "▸") : "·"}
+            ${expanded ? "▾" : "▸"}
           </button>
           <button
             class="ahr-tree__item"
@@ -501,7 +532,155 @@ function renderDirectory(props: ChatProps) {
             <span class="ahr-tree__name">${row.name}</span>
           </button>
         </div>
-        ${hasChildren && expanded ? children.map((c) => renderNode(c, depth + 1)) : nothing}
+        ${
+          expanded
+            ? html`
+                ${hasChildren ? children.map((c) => renderNode(c, depth + 1)) : nothing}
+                ${html`
+                    ${renderSectionLabel(
+                      props.hrCorePositionsLoading
+                        ? "岗位 (加载中...)"
+                        : `岗位 (${positions.length})`,
+                      depth + 1,
+                    )}
+                    ${
+                      positions.length === 0
+                        ? html`
+                            <div class="ahr-tree__row" style=${pad(depth + 2)}>
+                              <button class="ahr-tree__toggle" type="button" disabled>·</button>
+                              <div class="muted" style="padding: 6px 8px;">暂无岗位</div>
+                            </div>
+                          `
+                        : positions.map((p) => {
+                            const posKey = (p.code ?? "").trim().toUpperCase();
+                            const posExpanded = Boolean(props.hrCorePositionExpanded[posKey]);
+                            const employeesAll = props.hrCorePositionEmployees[posKey] ?? [];
+                            const employees = employeesAll.filter((e) => e.status === "ACTIVE");
+                            const peopleLoading = Boolean(
+                              props.hrCorePositionEmployeesLoading[posKey],
+                            );
+                            const peopleError =
+                              (props.hrCorePositionEmployeesError[posKey] ?? "").trim() || null;
+                            const peopleLoaded = Object.prototype.hasOwnProperty.call(
+                              props.hrCorePositionEmployees,
+                              posKey,
+                            );
+
+                            return html`
+                              <div class="ahr-tree__row" style=${pad(depth + 2)}>
+                                <button
+                                  class="ahr-tree__toggle"
+                                  type="button"
+                                  @click=${() => props.onHrPositionExpandedToggle(posKey)}
+                                >
+                                  ${posExpanded ? "▾" : "▸"}
+                                </button>
+                                <button
+                                  class="ahr-tree__item"
+                                  type="button"
+                                  @click=${() =>
+                                    props.onHrCoreHitSelect({ kind: "position", key: posKey })}
+                                >
+                                  <span class="mono">${posKey}</span>
+                                  <span class="ahr-tree__name">${p.name}</span>
+                                </button>
+                              </div>
+                              ${
+                                posExpanded
+                                  ? html`
+                                      ${renderSectionLabel(
+                                        peopleLoaded
+                                          ? `人员 (${employees.length})`
+                                          : peopleLoading
+                                            ? "人员 (加载中...)"
+                                            : "人员",
+                                        depth + 3,
+                                      )}
+                                      ${
+                                        peopleError
+                                          ? html`
+                                              <div class="ahr-tree__row" style=${pad(depth + 4)}>
+                                                <button class="ahr-tree__toggle" type="button" disabled>·</button>
+                                                <button
+                                                  class="ahr-tree__item"
+                                                  type="button"
+                                                  @click=${() => props.onHrPositionEmployeesLoad(posKey)}
+                                                  title=${peopleError}
+                                                >
+                                                  <span class="mono">Retry</span>
+                                                  <span class="ahr-tree__name">加载人员失败，点击重试</span>
+                                                </button>
+                                              </div>
+                                            `
+                                          : peopleLoading
+                                            ? html`
+                                                <div class="ahr-tree__row" style=${pad(depth + 4)}>
+                                                  <button class="ahr-tree__toggle" type="button" disabled>·</button>
+                                                  <div class="muted" style="padding: 6px 8px;">
+                                                    ${icons.loader} Loading…
+                                                  </div>
+                                                </div>
+                                              `
+                                            : !peopleLoaded
+                                              ? html`
+                                                  <div class="ahr-tree__row" style=${pad(
+                                                    depth + 4,
+                                                  )}>
+                                                    <button class="ahr-tree__toggle" type="button" disabled>·</button>
+                                                    <button
+                                                      class="ahr-tree__item"
+                                                      type="button"
+                                                      @click=${() =>
+                                                        props.onHrPositionEmployeesLoad(posKey)}
+                                                    >
+                                                      <span class="mono">Load</span>
+                                                      <span class="ahr-tree__name">点击加载人员</span>
+                                                    </button>
+                                                  </div>
+                                                `
+                                              : employees.length === 0
+                                                ? html`
+                                                    <div class="ahr-tree__row" style=${pad(
+                                                      depth + 4,
+                                                    )}>
+                                                      <button class="ahr-tree__toggle" type="button" disabled>·</button>
+                                                      <div class="muted" style="padding: 6px 8px;">暂无人员</div>
+                                                    </div>
+                                                  `
+                                                : employees.map((e) => {
+                                                    const name =
+                                                      e.profile?.legal_name ?? "(no name)";
+                                                    return html`
+                                                      <div class="ahr-tree__row" style=${pad(
+                                                        depth + 4,
+                                                      )}>
+                                                        <button class="ahr-tree__toggle" type="button" disabled>·</button>
+                                                        <button
+                                                          class="ahr-tree__item"
+                                                          type="button"
+                                                          @click=${() =>
+                                                            props.onHrCoreHitSelect({
+                                                              kind: "employee",
+                                                              key: e.emp_no,
+                                                            })}
+                                                        >
+                                                          <span class="mono">${e.emp_no}</span>
+                                                          <span class="ahr-tree__name">${name}</span>
+                                                        </button>
+                                                      </div>
+                                                    `;
+                                                  })
+                                      }
+                                    `
+                                  : nothing
+                              }
+                            `;
+                          })
+                    }
+                  `}
+              `
+            : nothing
+        }
       `;
     };
 

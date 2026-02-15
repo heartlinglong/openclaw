@@ -996,6 +996,14 @@ export function renderApp(state: AppViewState) {
                 hrCoreOrgUnitsLoading: (state as unknown as OpenClawApp).hrCoreOrgUnitsLoading,
                 hrCoreOrgUnits: (state as unknown as OpenClawApp).hrCoreOrgUnits,
                 hrCoreOrgExpanded: (state as unknown as OpenClawApp).hrCoreOrgExpanded,
+                hrCorePositions: (state as unknown as OpenClawApp).hrCorePositions,
+                hrCorePositionsLoading: (state as unknown as OpenClawApp).hrCorePositionsLoading,
+                hrCorePositionExpanded: (state as unknown as OpenClawApp).hrCorePositionExpanded,
+                hrCorePositionEmployeesLoading: (state as unknown as OpenClawApp)
+                  .hrCorePositionEmployeesLoading,
+                hrCorePositionEmployees: (state as unknown as OpenClawApp).hrCorePositionEmployees,
+                hrCorePositionEmployeesError: (state as unknown as OpenClawApp)
+                  .hrCorePositionEmployeesError,
                 onHrCoreSettingsChange: (next) =>
                   (state as unknown as OpenClawApp).setHrCoreSettings(next),
                 onHrCoreLoginUsernameChange: (next) =>
@@ -1009,6 +1017,12 @@ export function renderApp(state: AppViewState) {
                 onHrOrgUnitsLoad: () => void (state as unknown as OpenClawApp).loadHrOrgUnits(),
                 onHrOrgExpandedToggle: (code) =>
                   (state as unknown as OpenClawApp).toggleHrOrgExpanded(code),
+                onHrPositionExpandedToggle: (code) =>
+                  (state as unknown as OpenClawApp).toggleHrPositionExpanded(code),
+                onHrPositionEmployeesLoad: (code) =>
+                  void (state as unknown as OpenClawApp).loadHrPositionEmployees(code, {
+                    force: true,
+                  }),
                 onHrCoreHitSelect: (hit) =>
                   void (state as unknown as OpenClawApp).selectHrCoreHit(hit),
               })
