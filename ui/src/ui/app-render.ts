@@ -66,6 +66,7 @@ import { renderInstances } from "./views/instances.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
+import { renderQuickSettings } from "./views/quick-settings.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
 
@@ -105,6 +106,51 @@ export function renderApp(state: AppViewState) {
     state.agentsList?.defaultId ??
     state.agentsList?.agents?.[0]?.id ??
     null;
+
+  const app = state as unknown as OpenClawApp;
+
+  function collectModelOptions(cfg: Record<string, unknown> | null) {
+    const raw = (cfg as any)?.agents?.defaults?.models;
+    if (!raw || typeof raw !== "object") return [];
+    const options: Array<{ id: string; label: string }> = [];
+    for (const [idRaw, metaRaw] of Object.entries(raw as Record<string, unknown>)) {
+      const id = String(idRaw).trim();
+      if (!id) continue;
+      const alias =
+        metaRaw && typeof metaRaw === "object" && "alias" in (metaRaw as any)
+          ? typeof (metaRaw as any).alias === "string"
+            ? (metaRaw as any).alias.trim()
+            : ""
+          : "";
+      options.push({ id, label: alias ? `${alias} (${id})` : id });
+    }
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
+  }
+
+  function resolveAgentModel(cfg: Record<string, unknown> | null, agentId: string | null) {
+    const list = (cfg as any)?.agents?.list;
+    if (!agentId || !Array.isArray(list)) {
+      return { primary: null as string | null, fallbacks: [] as string[] };
+    }
+    const entry = list.find((row: any) => row && typeof row === "object" && row.id === agentId);
+    const model = entry?.model;
+    if (!model) return { primary: null, fallbacks: [] };
+    if (typeof model === "string") return { primary: model.trim() || null, fallbacks: [] };
+    if (typeof model === "object" && !Array.isArray(model)) {
+      const primary =
+        typeof (model as any).primary === "string" ? (model as any).primary.trim() : null;
+      const fallbacks = Array.isArray((model as any).fallbacks)
+        ? (model as any).fallbacks.map((v: any) => String(v).trim()).filter(Boolean)
+        : [];
+      return { primary: primary || null, fallbacks };
+    }
+    return { primary: null, fallbacks: [] };
+  }
+
+  const quickConfigValue = configValue as Record<string, unknown> | null;
+  const quickModelOptions = collectModelOptions(quickConfigValue);
+  const quickAgentModel = resolveAgentModel(quickConfigValue, resolvedAgentId);
 
   return html`
     <div class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
@@ -999,8 +1045,107 @@ export function renderApp(state: AppViewState) {
             : nothing
         }
       </main>
+      ${
+        isChat
+          ? html`
+              <button
+                class="quick-settings-fab"
+                @click=${() => {
+                  app.quickSettingsSection = "models";
+                  app.quickSettingsOpen = true;
+                }}
+                title="设置"
+              >
+                <span class="quick-settings-fab__icon">${icons.settings}</span>
+                <span class="quick-settings-fab__text">设置</span>
+              </button>
+            `
+          : nothing
+      }
       ${renderExecApprovalPrompt(state)}
       ${renderGatewayUrlConfirmation(state)}
+      ${renderQuickSettings({
+        open: app.quickSettingsOpen,
+        connected: state.connected,
+        section: app.quickSettingsSection,
+        agentId: resolvedAgentId,
+        configLoaded: Boolean(configValue),
+        configSaving: state.configSaving,
+        configDirty: state.configFormDirty,
+        modelOptions: quickModelOptions,
+        modelPrimary: quickAgentModel.primary,
+        modelFallbacks: quickAgentModel.fallbacks,
+        onClose: () => {
+          app.quickSettingsOpen = false;
+        },
+        onSectionChange: (section) => {
+          app.quickSettingsSection = section;
+        },
+        onNavigate: (tab, opts) => {
+          app.quickSettingsOpen = false;
+          if (tab === "agents" && opts?.agentsPanel) {
+            state.agentsPanel = opts.agentsPanel;
+          }
+          state.setTab(tab);
+        },
+        onModelPrimaryChange: (modelId) => {
+          if (!quickConfigValue || !resolvedAgentId) return;
+          const list = (quickConfigValue as any)?.agents?.list;
+          if (!Array.isArray(list)) return;
+          const index = list.findIndex(
+            (row: any) => row && typeof row === "object" && row.id === resolvedAgentId,
+          );
+          if (index < 0) return;
+          const basePath = ["agents", "list", index, "model"];
+          if (!modelId) {
+            removeConfigFormValue(state as unknown as ConfigState, basePath);
+            return;
+          }
+          const existing = (list[index] as any)?.model;
+          if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+            const fallbacks = (existing as any).fallbacks;
+            const next = {
+              primary: modelId,
+              ...(Array.isArray(fallbacks) ? { fallbacks } : {}),
+            };
+            updateConfigFormValue(state as unknown as ConfigState, basePath, next);
+          } else {
+            updateConfigFormValue(state as unknown as ConfigState, basePath, modelId);
+          }
+        },
+        onModelFallbacksChange: (fallbacks) => {
+          if (!quickConfigValue || !resolvedAgentId) return;
+          const list = (quickConfigValue as any)?.agents?.list;
+          if (!Array.isArray(list)) return;
+          const index = list.findIndex(
+            (row: any) => row && typeof row === "object" && row.id === resolvedAgentId,
+          );
+          if (index < 0) return;
+          const basePath = ["agents", "list", index, "model"];
+          const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
+          const existing = (list[index] as any)?.model;
+          const primary =
+            typeof existing === "string"
+              ? existing.trim() || null
+              : existing &&
+                  typeof existing === "object" &&
+                  !Array.isArray(existing) &&
+                  typeof (existing as any).primary === "string"
+                ? (existing as any).primary.trim() || null
+                : null;
+          if (normalized.length === 0) {
+            if (primary) {
+              updateConfigFormValue(state as unknown as ConfigState, basePath, primary);
+            } else {
+              removeConfigFormValue(state as unknown as ConfigState, basePath);
+            }
+            return;
+          }
+          const next = primary ? { primary, fallbacks: normalized } : { fallbacks: normalized };
+          updateConfigFormValue(state as unknown as ConfigState, basePath, next);
+        },
+        onSaveConfig: () => saveConfig(state as unknown as ConfigState),
+      })}
     </div>
   `;
 }

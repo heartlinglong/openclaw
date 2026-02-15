@@ -218,6 +218,10 @@ export class OpenClawApp extends LitElement {
   @state() agentSkillsReport: SkillStatusReport | null = null;
   @state() agentSkillsAgentId: string | null = null;
 
+  // Quick settings overlay (for chat focus mode / fast access)
+  @state() quickSettingsOpen = false;
+  @state() quickSettingsSection: "models" | "skills" | "cron" | "memory" | "channels" = "models";
+
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;
   @state() sessionsError: string | null = null;
