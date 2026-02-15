@@ -786,7 +786,13 @@ function renderFlow(props: ChatProps) {
         <div class="ahr-card__sub mono">${ev.code}</div>
         <div class="ahr-kvgrid">
           ${renderKv("status", ev.status)}
-          ${p ? renderKv("emp_no", p.emp_no?.display) : nothing}
+          ${
+            ev.employee_emp_no
+              ? renderKv("emp_no", `${ev.employee_emp_no} (已生成)`)
+              : p
+                ? renderKv("emp_no", p.emp_no?.display)
+                : nothing
+          }
           ${p ? renderKv("legal_name", p.profile?.legal_name) : nothing}
           ${p ? renderKv("hire_date", p.employment?.hire_date) : nothing}
           ${p ? renderKv("legal_entity", p.employment?.legal_entity_code) : nothing}

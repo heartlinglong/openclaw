@@ -33,6 +33,7 @@ export type HrCoreEvent = {
   status: string;
   payload: JsonValue;
   employee_id: string | null;
+  employee_emp_no?: string | null;
   created_at: string;
   updated_at: string;
 };
