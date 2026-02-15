@@ -380,8 +380,15 @@ export class OpenClawApp extends LitElement {
     this.hrCoreError = null;
     this.hrCoreLoginBusy = true;
     try {
-      const username = this.hrCoreLoginUsername.trim();
-      const password = this.hrCoreLoginPassword.trim();
+      const normalizeCredential = (value: string) => {
+        // Avoid invisible Unicode characters causing confusing 401s.
+        return value
+          .normalize("NFKC")
+          .replace(/[\u200B\u200C\u200D\uFEFF]/g, "")
+          .trim();
+      };
+      const username = normalizeCredential(this.hrCoreLoginUsername);
+      const password = normalizeCredential(this.hrCoreLoginPassword);
       if (!username || !password) {
         this.hrCoreError = "username/password required";
         return;

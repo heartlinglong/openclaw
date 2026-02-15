@@ -166,6 +166,7 @@ function renderSectionContent(props: QuickSettingsProps) {
     const token = props.hrCoreSettings.token.trim();
     const baseUrl = props.hrCoreSettings.baseUrl.trim();
     const user = props.hrCoreSettings.user;
+    const passwordLen = (props.hrCoreLoginPassword ?? "").length;
     return html`
       <div class="qs-section-title">HR Core 登录</div>
       <div class="muted qs-section-sub">
@@ -231,12 +232,16 @@ function renderSectionContent(props: QuickSettingsProps) {
             @input=${(e: Event) =>
               props.onHrCoreLoginPasswordChange((e.target as HTMLInputElement).value)}
           />
+          <div class="muted" style="margin-top: 6px;">Password length: ${passwordLen}</div>
         </label>
       </div>
 
       <div class="row" style="margin-top: 14px; flex-wrap: wrap;">
         <button class="btn primary" ?disabled=${props.hrCoreLoginBusy} @click=${() => props.onHrCoreLogin()}>
           ${props.hrCoreLoginBusy ? icons.loader : icons.zap} Login
+        </button>
+        <button class="btn" type="button" @click=${() => props.onHrCoreLoginPasswordChange("")}>
+          ${icons.x} Clear password
         </button>
         <button class="btn" ?disabled=${!token} @click=${() => props.onHrCoreLogout()}>
           ${icons.x} Logout
