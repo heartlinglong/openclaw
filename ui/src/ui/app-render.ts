@@ -889,6 +889,9 @@ export function renderApp(state: AppViewState) {
           state.tab === "chat"
             ? renderChat({
                 sessionKey: state.sessionKey,
+                threadFilter: (state as unknown as OpenClawApp).threadFilter,
+                onThreadFilterChange: (next) =>
+                  ((state as unknown as OpenClawApp).threadFilter = next),
                 onSessionKeyChange: (next) => {
                   const app = state as unknown as OpenClawApp;
                   const prev = state.sessionKey;

@@ -1,659 +1,313 @@
-/**
- * CodePilot Components
- * Reusable UI components
- */
-
-/* ========================================
-   Buttons
-   ======================================== */
-
-.cp-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.cp-btn:hover {
-  background: var(--surface-hovered);
-  color: var(--text-primary);
-}
-
-.cp-btn:active {
-  background: var(--surface-active);
-}
-
-.cp-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Button Variants */
-.cp-btn--primary {
-  background: var(--accent-primary);
-  color: white;
-  border-color: var(--accent-primary);
-}
-
-.cp-btn--primary:hover {
-  background: var(--accent-primary-hover);
-  border-color: var(--accent-primary-hover);
-  box-shadow: var(--shadow-glow);
-}
-
-.cp-btn--secondary {
-  background: var(--surface-default);
-  border-color: var(--border-default);
-  color: var(--text-primary);
-}
-
-.cp-btn--secondary:hover {
-  background: var(--surface-hovered);
-  border-color: var(--border-strong);
-}
-
-.cp-btn--ghost {
-  background: transparent;
-  border-color: transparent;
-}
-
-.cp-btn--ghost:hover {
-  background: var(--surface-hovered);
-}
-
-.cp-btn--danger {
-  background: var(--danger-bg);
-  border-color: var(--danger-border);
-  color: var(--accent-danger);
-}
-
-.cp-btn--danger:hover {
-  background: var(--accent-danger);
-  color: white;
-}
-
-/* Button Sizes */
-.cp-btn--sm {
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-xs);
-}
-
-.cp-btn--lg {
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--text-md);
-}
-
-.cp-btn--icon {
-  padding: var(--space-2);
-  width: 36px;
-  height: 36px;
-}
-
-.cp-btn--icon-sm {
-  padding: var(--space-1);
-  width: 28px;
-  height: 28px;
-}
-
-.cp-btn svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-/* ========================================
-   Cards
-   ======================================== */
-
-.cp-card {
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
+/* ===== 工具调用卡片 ===== */
+.chat-tool-card {
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  padding: 0;
   overflow: hidden;
-  transition: all var(--duration-fast) var(--ease-out);
+  max-height: none;
+  /* 移除固定高度限制 */
+  transition: all 150ms ease-out;
 }
 
-.cp-card:hover {
+.chat-tool-card:hover {
   border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* 卡片头部 */
+.chat-tool-card__header {
+  padding: 10px 14px;
+  background: var(--panel-strong);
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-tool-card__title {
+  font-family: var(--font-body);
+  /* 改为正文字体，不用等宽 */
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* 卡片预览区域 */
+.chat-tool-card__preview {
+  border: none;
+  background: var(--bg-accent);
+  border-radius: 0;
+  margin-top: 0;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  max-height: 60px;
+}
+
+/* 状态图标颜色 */
+.chat-tool-card__status {
+  color: var(--ok);
+}
+
+/* ===== 通用卡片 ===== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 
-.cp-card__header {
+/* ===== 按钮通用 ===== */
+.btn {
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 150ms ease-out;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ===== Phase 7: Thread 列表优化 + 设置按钮 + 间距修复 ===== */
+
+/* 1. Thread 列表项 */
+.ahr-thread__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-muted);
-  background: var(--bg-tertiary);
+  gap: 8px;
 }
 
-.cp-card__title {
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
-}
-
-.cp-card__subtitle {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin-top: 2px;
-}
-
-.cp-card__content {
-  padding: var(--space-4);
-}
-
-.cp-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border-muted);
-  background: var(--bg-tertiary);
-}
-
-/* ========================================
-   Form Elements
-   ======================================== */
-
-.cp-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-bottom: var(--space-3);
-}
-
-.cp-label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--text-secondary);
-}
-
-.cp-input-field {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.cp-input-field:hover {
-  border-color: var(--border-strong);
-}
-
-.cp-input-field:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-primary-muted);
-}
-
-.cp-input-field::placeholder {
-  color: var(--text-muted);
-}
-
-.cp-input-field:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background: var(--bg-tertiary);
-}
-
-/* Select */
-.cp-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e7681' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 32px;
-}
-
-/* Checkbox & Radio */
-.cp-checkbox,
-.cp-radio {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.cp-checkbox input,
-.cp-radio input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent-primary);
-}
-
-/* ========================================
-   Dropdown/Menu
-   ======================================== */
-
-.cp-dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.cp-dropdown__menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  min-width: 180px;
-  margin-top: var(--space-1);
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: var(--z-dropdown);
-  animation: fadeInUp var(--duration-fast) var(--ease-out);
+.ahr-thread__title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13px;
 }
 
-.cp-dropdown__item {
+.ahr-thread__time {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.ahr-thread {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  transition: background 120ms ease-out;
+}
+
+.ahr-thread:hover {
+  background: var(--bg-hover);
+}
+
+.ahr-thread.active {
+  background: var(--accent-subtle);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.ahr-thread__meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  justify-content: space-between;
+  /* 此时 pill 和归档按钮分居两侧 */
+}
+
+/* 如果只有 pill，保持左对齐 */
+.ahr-thread__meta:not(:has(.ahr-thread__archive-icon)) {
+  justify-content: flex-start;
+}
+
+.ahr-thread__pill {
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ahr-thread__archive-icon {
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  opacity: 0;
+  transition: opacity 150ms;
+  font-size: 14px;
 }
 
-.cp-dropdown__item:hover {
-  background: var(--surface-hovered);
-  color: var(--text-primary);
+.ahr-thread:hover .ahr-thread__archive-icon {
+  opacity: 1;
 }
 
-.cp-dropdown__item--danger:hover {
-  background: var(--danger-bg);
-  color: var(--accent-danger);
+/* 2. 设置按钮 */
+.ahr-settings__btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease-out;
+  box-shadow: var(--shadow-sm);
 }
 
-.cp-dropdown__item svg {
+.ahr-settings__btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.ahr-settings__icon {
   width: 16px;
   height: 16px;
-  flex-shrink: 0;
-}
-
-.cp-dropdown__divider {
-  height: 1px;
-  margin: var(--space-1) 0;
-  background: var(--border-muted);
-}
-
-/* ========================================
-   Badges/Pills
-   ======================================== */
-
-.cp-badge {
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 2px 8px;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  border-radius: var(--radius-full);
-  white-space: nowrap;
+  transition: transform 300ms var(--ease-out);
+  color: var(--muted);
 }
 
-.cp-badge--default {
-  background: var(--surface-default);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
+.ahr-settings__btn:hover .ahr-settings__icon {
+  transform: rotate(60deg);
+  color: var(--accent);
 }
 
-.cp-badge--primary {
-  background: var(--accent-primary-muted);
-  color: var(--accent-primary);
-  border: 1px solid var(--border-accent);
+.ahr-settings__icon svg {
+  width: 16px;
+  height: 16px;
 }
 
-.cp-badge--success {
-  background: var(--success-bg);
-  color: var(--accent-success);
-  border: 1px solid var(--success-border);
-}
-
-.cp-badge--warning {
-  background: var(--warning-bg);
-  color: var(--accent-warning);
-  border: 1px solid var(--warning-border);
-}
-
-.cp-badge--danger {
-  background: var(--danger-bg);
-  color: var(--accent-danger);
-  border: 1px solid var(--danger-border);
-}
-
-/* ========================================
-   Tooltip
-   ======================================== */
-
-.cp-tooltip {
-  position: relative;
-}
-
-.cp-tooltip::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
-  padding: var(--space-1) var(--space-2);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  font-size: var(--text-xs);
-  border-radius: var(--radius-md);
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all var(--duration-fast) var(--ease-out);
-  z-index: var(--z-tooltip);
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-default);
-}
-
-.cp-tooltip:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(-8px);
-}
-
-/* ========================================
-   Modals
-   ======================================== */
-
-.cp-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  z-index: var(--z-modal-backdrop);
-  animation: fadeIn var(--duration-fast) var(--ease-out);
-}
-
-.cp-modal {
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
+/* 设置弹出面板 */
+.ahr-settings__popover {
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  animation: scaleIn var(--duration-fast) var(--ease-out);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  border: 1px solid var(--border);
+  background: var(--card);
+  animation: scaleIn 0.15s var(--ease-out);
 }
 
-.cp-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--border-muted);
+.ahr-settings__item {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 100ms ease-out;
 }
 
-.cp-modal__title {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
+.ahr-settings__item:hover {
+  background: var(--bg-hover);
 }
 
-.cp-modal__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: all var(--duration-fast) var(--ease-out);
+.ahr-settings__miniicon {
+  color: var(--muted);
+  transition: color 100ms ease-out;
 }
 
-.cp-modal__close:hover {
-  background: var(--surface-hovered);
-  color: var(--text-primary);
+.ahr-settings__item:hover .ahr-settings__miniicon {
+  color: var(--accent);
 }
 
-.cp-modal__content {
-  padding: var(--space-4);
-  overflow-y: auto;
-  flex: 1;
+.ahr-sidebar__footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
 }
 
-.cp-modal__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-top: 1px solid var(--border-muted);
-  background: var(--bg-tertiary);
+/* 3. 间距修复 & 搜索框美化 (Updated) */
+.ahr-sidebar__head {
+  padding: 16px 16px 12px;
 }
 
-/* ========================================
-   Loading States
-   ======================================== */
-
-.cp-skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--surface-default) 25%,
-    var(--surface-hovered) 50%,
-    var(--surface-default) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: var(--radius-md);
+.ahr-sidebar__head-row {
+  margin-bottom: 12px;
 }
 
-.cp-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-default);
-  border-top-color: var(--accent-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.cp-spinner--sm {
-  width: 16px;
-  height: 16px;
-  border-width: 1.5px;
-}
-
-.cp-spinner--lg {
-  width: 32px;
-  height: 32px;
-  border-width: 3px;
-}
-
-/* ========================================
-   Divider
-   ======================================== */
-
-.cp-divider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: var(--space-4) 0;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
-.cp-divider::before,
-.cp-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border-default);
-}
-
-/* ========================================
-   Alert/Callout
-   ======================================== */
-
-.cp-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
-}
-
-.cp-alert__icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.cp-alert__content {
-  flex: 1;
-}
-
-.cp-alert__title {
-  font-weight: var(--font-semibold);
-  margin-bottom: 2px;
-}
-
-.cp-alert--info {
-  background: var(--info-bg);
-  border: 1px solid var(--info-border);
-  color: var(--accent-info);
-}
-
-.cp-alert--success {
-  background: var(--success-bg);
-  border: 1px solid var(--success-border);
-  color: var(--accent-success);
-}
-
-.cp-alert--warning {
-  background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
-  color: var(--accent-warning);
-}
-
-.cp-alert--danger {
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
-  color: var(--accent-danger);
-}
-
-/* ========================================
-   Tabs
-   ======================================== */
-
-.cp-tabs {
-  display: flex;
-  gap: var(--space-1);
-  border-bottom: 1px solid var(--border-muted);
-  padding: 0 var(--space-2);
-}
-
-.cp-tab {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--text-tertiary);
-  border: none;
-  background: transparent;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.cp-tab:hover {
-  color: var(--text-primary);
-}
-
-.cp-tab--active {
-  color: var(--accent-primary);
-  border-bottom-color: var(--accent-primary);
-}
-
-.cp-tab__badge {
-  padding: 1px 6px;
-  background: var(--surface-default);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-}
-
-/* ========================================
-   Toggle/Switch
-   ======================================== */
-
-.cp-toggle {
+.ahr-searchbox {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
 }
 
-.cp-toggle__input {
-  position: relative;
-  width: 40px;
-  height: 22px;
-  appearance: none;
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.cp-toggle__input::after {
-  content: "";
+.ahr-searchbox__icon {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  background: var(--text-muted);
-  border-radius: 50%;
-  transition: all var(--duration-fast) var(--ease-out);
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  pointer-events: none;
+  transition: color 200ms ease-out;
 }
 
-.cp-toggle__input:checked {
-  background: var(--accent-primary-muted);
-  border-color: var(--accent-primary);
+.ahr-searchbox__icon svg {
+  width: 14px;
+  height: 14px;
 }
 
-.cp-toggle__input:checked::after {
-  left: 20px;
-  background: var(--accent-primary);
+.ahr-searchbox__input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 36px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  /* Pill shape */
+  background: rgba(0, 0, 0, 0.04);
+  /* Subtle gray background */
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.cp-toggle__label {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+.ahr-searchbox__input::placeholder {
+  color: var(--muted);
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.ahr-searchbox__input:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.ahr-searchbox__input:focus {
+  background: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+  /* Soft Indigo Focus Ring */
+}
+
+/* Focus state icon color */
+.ahr-searchbox:focus-within .ahr-searchbox__icon {
+  color: var(--accent);
+}
+
+.ahr-chip {
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  transition: all 150ms ease-out;
+}
+
+.ahr-chip:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
 }

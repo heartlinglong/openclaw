@@ -1,67 +1,94 @@
 /**
- * CodePilot-inspired Theme for AgentHR WebChat
- * Modern, professional UI design system
+ * AgentHR WebChat UI Theme
+ * Warm, clean, professional design system
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
   /* ========================================
-     Color System - CodePilot Style
+     Color System - Warm Neutral Theme
      ======================================== */
 
-  /* Background Scale - Deep, warm dark tones */
-  --bg-root: #0d0f12;
-  --bg-primary: #111418;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #1c2128;
-  --bg-elevated: #21262d;
-  --bg-overlay: rgba(0, 0, 0, 0.6);
+  /* ── Background Gradient ── */
+  --bg: #fdfbf7; /* Warm off-white - page main background */
+  --bg-accent: #f5f2eb; /* Light warm gray - sidebar/header */
+  --bg-elevated: #ffffff; /* Pure white - cards/overlays */
+  --bg-hover: #f0ebe4; /* Hover background */
+  --bg-muted: #f0ebe4; /* Muted areas */
 
-  /* Surface Colors */
-  --surface-default: #161b22;
-  --surface-hovered: #1c2128;
-  --surface-active: #21262d;
-  --surface-selected: rgba(88, 166, 255, 0.1);
+  /* ── Card/Panel ── */
+  --card: #ffffff;
+  --card-foreground: #2d2a26;
+  --card-highlight: rgba(255, 255, 255, 0.6);
+  --popover: #ffffff;
+  --popover-foreground: #2d2a26;
+  --panel: #fdfbf7;
+  --panel-strong: #f5f2eb;
+  --panel-hover: #f0ebe4;
+  --chrome: rgba(253, 251, 247, 0.95);
+  --chrome-strong: rgba(253, 251, 247, 0.98);
 
-  /* Text Colors - High contrast hierarchy */
-  --text-primary: #f0f6fc;
-  --text-secondary: #b4bcd0;
-  --text-tertiary: #848d97;
-  --text-muted: #6e7681;
-  --text-disabled: #484f58;
+  /* ── Text Hierarchy ── */
+  --text: #2d2a26; /* Deep warm gray - primary text */
+  --text-strong: #1a1816; /* Deepest - headings */
+  --chat-text: #2d2a26;
+  --muted: #78716c; /* Medium warm gray - secondary info */
+  --muted-strong: #57534e;
+  --muted-foreground: #78716c;
 
-  /* Border Colors - Subtle definition */
-  --border-default: #30363d;
-  --border-muted: #21262d;
-  --border-strong: #484f58;
-  --border-accent: rgba(88, 166, 255, 0.4);
+  /* ── Borders ── */
+  --border: #e7e5e4; /* Warm gray border */
+  --border-strong: #d6d3d1;
+  --border-hover: #c4c0bc;
+  --input: #e7e5e4;
 
-  /* Accent Colors - CodePilot blue primary */
-  --accent-primary: #58a6ff;
-  --accent-primary-hover: #79b8ff;
-  --accent-primary-muted: rgba(88, 166, 255, 0.15);
-  --accent-secondary: #a371f7;
-  --accent-success: #3fb950;
-  --accent-warning: #d29922;
-  --accent-danger: #f85149;
-  --accent-info: #58a6ff;
+  /* ── Primary Accent - Indigo (professional & friendly) ── */
+  --accent: #4f46e5; /* Indigo-600 */
+  --accent-hover: #4338ca; /* Indigo-700 */
+  --accent-muted: #4f46e5;
+  --accent-subtle: rgba(79, 70, 229, 0.08);
+  --accent-foreground: #ffffff;
+  --accent-glow: rgba(79, 70, 229, 0.15);
+  --ring: #4f46e5;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
 
-  /* Semantic Colors with subtle backgrounds */
-  --success-bg: rgba(63, 185, 80, 0.1);
-  --success-border: rgba(63, 185, 80, 0.4);
-  --warning-bg: rgba(210, 153, 34, 0.1);
-  --warning-border: rgba(210, 153, 34, 0.4);
-  --danger-bg: rgba(248, 81, 73, 0.1);
-  --danger-border: rgba(248, 81, 73, 0.4);
-  --info-bg: rgba(88, 166, 255, 0.1);
-  --info-border: rgba(88, 166, 255, 0.4);
+  /* ── Secondary Colors ── */
+  --secondary: #f5f2eb;
+  --secondary-foreground: #2d2a26;
+  --accent-2: #0d9488; /* Teal */
+  --accent-2-muted: rgba(13, 148, 136, 0.7);
+  --accent-2-subtle: rgba(13, 148, 136, 0.1);
+
+  /* ── Semantic Colors ── */
+  --ok: #059669; /* Emerald-600 */
+  --ok-muted: rgba(5, 150, 105, 0.75);
+  --ok-subtle: rgba(5, 150, 105, 0.08);
+  --destructive: #dc2626;
+  --destructive-foreground: #fafafa;
+  --warn: #d97706; /* Amber-600 */
+  --warn-muted: rgba(217, 119, 6, 0.75);
+  --warn-subtle: rgba(217, 119, 6, 0.08);
+  --danger: #dc2626;
+  --danger-muted: rgba(220, 38, 38, 0.75);
+  --danger-subtle: rgba(220, 38, 38, 0.08);
+  --info: #4f46e5;
+
+  /* ── Focus ── */
+  --focus: rgba(79, 70, 229, 0.2);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
+
+  /* ── Grid Lines ── */
+  --grid-line: rgba(0, 0, 0, 0.04);
 
   /* ========================================
-     Typography - Clean, modern sans-serif
+     Typography
      ======================================== */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Monaco, Consolas, monospace;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-body);
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --mono: var(--font-mono);
 
   --text-xs: 11px;
   --text-sm: 12px;
@@ -95,27 +122,26 @@
   --space-12: 48px;
 
   /* ========================================
-     Border Radius - Soft, modern corners
+     Border Radius
      ======================================== */
-  --radius-none: 0;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
+  --radius: 10px; /* Default radius slightly larger, softer */
 
   /* ========================================
-     Shadows - Subtle depth
+     Shadows - Soft diffusion
      ======================================== */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(88, 166, 255, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-glow: 0 0 24px var(--accent-glow);
 
   /* ========================================
-     Transitions - Smooth, snappy
+     Transitions
      ======================================== */
   --duration-instant: 0ms;
   --duration-fast: 100ms;
@@ -130,7 +156,7 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ========================================
-     Layout - Panel dimensions
+     Layout
      ======================================== */
   --sidebar-width: 260px;
   --sidebar-collapsed: 64px;
@@ -150,61 +176,13 @@
   --z-popover: 600;
   --z-tooltip: 700;
 
-  color-scheme: dark;
+  /* Force light theme */
+  color-scheme: light;
 }
 
-/* ========================================
-   Light Theme
-   ======================================== */
+/* Light theme (same as default) */
 :root[data-theme="light"] {
-  --bg-root: #ffffff;
-  --bg-primary: #f6f8fa;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f3f4f6;
-  --bg-elevated: #ffffff;
-  --bg-overlay: rgba(31, 35, 40, 0.5);
-
-  --surface-default: #ffffff;
-  --surface-hovered: #f3f4f6;
-  --surface-active: #ebf0f5;
-  --surface-selected: rgba(9, 105, 218, 0.1);
-
-  --text-primary: #1f2328;
-  --text-secondary: #4b5563;
-  --text-tertiary: #6b7280;
-  --text-muted: #9ca3af;
-  --text-disabled: #d1d5db;
-
-  --border-default: #d1d5db;
-  --border-muted: #e5e7eb;
-  --border-strong: #9ca3af;
-  --border-accent: rgba(9, 105, 218, 0.4);
-
-  --accent-primary: #0969da;
-  --accent-primary-hover: #0550ae;
-  --accent-primary-muted: rgba(9, 105, 218, 0.1);
-  --accent-secondary: #8250df;
-  --accent-success: #1a7f37;
-  --accent-warning: #9a6700;
-  --accent-danger: #cf222e;
-  --accent-info: #0969da;
-
-  --success-bg: rgba(26, 127, 55, 0.1);
-  --success-border: rgba(26, 127, 55, 0.4);
-  --warning-bg: rgba(154, 103, 0, 0.1);
-  --warning-border: rgba(154, 103, 0, 0.4);
-  --danger-bg: rgba(207, 34, 46, 0.1);
-  --danger-border: rgba(207, 34, 46, 0.4);
-  --info-bg: rgba(9, 105, 218, 0.1);
-  --info-border: rgba(9, 105, 218, 0.4);
-
-  --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.04);
-  --shadow-md: 0 3px 6px rgba(31, 35, 40, 0.08);
-  --shadow-lg: 0 8px 24px rgba(31, 35, 40, 0.12);
-  --shadow-xl: 0 12px 48px rgba(31, 35, 40, 0.18);
-  --shadow-glow: 0 0 20px rgba(9, 105, 218, 0.15);
-
-  color-scheme: light;
+  /* Variables already defined in :root */
 }
 
 /* ========================================
@@ -227,23 +205,23 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--text-base);
   font-weight: var(--font-normal);
   line-height: var(--leading-normal);
-  color: var(--text-primary);
-  background-color: var(--bg-root);
+  color: var(--text);
+  background-color: var(--bg);
   min-height: 100vh;
   overflow-x: hidden;
 }
 
 /* ========================================
-   Scrollbar Styling
+   Scrollbar Styling - Warm Gray
    ======================================== */
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -251,14 +229,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-default);
-  border-radius: var(--radius-full);
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: #d6d3d1;
+  border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
+  background: #c4c0bc;
 }
 
 ::-webkit-scrollbar-corner {
@@ -270,8 +246,21 @@ body {
    ======================================== */
 
 ::selection {
-  background: var(--accent-primary-muted);
-  color: var(--text-primary);
+  background: rgba(79, 70, 229, 0.15);
+  color: var(--text-strong);
+}
+
+/* ========================================
+   Link Styles
+   ======================================== */
+
+a {
+  color: var(--accent);
+  transition: color 150ms ease-out;
+}
+
+a:hover {
+  color: var(--accent-hover);
 }
 
 /* ========================================
@@ -371,59 +360,115 @@ body {
 }
 
 /* ========================================
+   Dashboard Enter Animation
+   ======================================== */
+
+@keyframes dashboard-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Status Indicators
+   ======================================== */
+
+.statusDot.ok {
+  background: var(--ok);
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.4);
+}
+
+/* ========================================
+   Button Micro-interactions
+   ======================================== */
+
+.btn {
+  transition: all 150ms ease-out;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ========================================
    Utility Classes
    ======================================== */
 
 .text-primary {
-  color: var(--text-primary);
+  color: var(--text);
 }
+
 .text-secondary {
-  color: var(--text-secondary);
+  color: var(--muted);
 }
+
 .text-tertiary {
-  color: var(--text-tertiary);
+  color: var(--muted-foreground);
 }
+
 .text-muted {
-  color: var(--text-muted);
+  color: var(--muted);
 }
+
 .text-accent {
-  color: var(--accent-primary);
+  color: var(--accent);
 }
+
 .text-success {
-  color: var(--accent-success);
+  color: var(--ok);
 }
+
 .text-warning {
-  color: var(--accent-warning);
+  color: var(--warn);
 }
+
 .text-danger {
-  color: var(--accent-danger);
+  color: var(--danger);
 }
 
 .bg-root {
-  background-color: var(--bg-root);
+  background-color: var(--bg);
 }
+
 .bg-primary {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-accent);
 }
+
 .bg-secondary {
-  background-color: var(--bg-secondary);
+  background-color: var(--panel);
 }
+
 .bg-tertiary {
-  background-color: var(--bg-tertiary);
+  background-color: var(--panel-strong);
 }
+
 .bg-elevated {
-  background-color: var(--bg-elevated);
+  background-color: var(--card);
 }
 
 .font-mono {
   font-family: var(--font-mono);
 }
+
 .font-medium {
   font-weight: var(--font-medium);
 }
+
 .font-semibold {
   font-weight: var(--font-semibold);
 }
+
 .font-bold {
   font-weight: var(--font-bold);
 }
@@ -444,27 +489,35 @@ body {
 .flex {
   display: flex;
 }
+
 .flex-col {
   flex-direction: column;
 }
+
 .items-center {
   align-items: center;
 }
+
 .justify-center {
   justify-content: center;
 }
+
 .justify-between {
   justify-content: space-between;
 }
+
 .gap-1 {
   gap: var(--space-1);
 }
+
 .gap-2 {
   gap: var(--space-2);
 }
+
 .gap-3 {
   gap: var(--space-3);
 }
+
 .gap-4 {
   gap: var(--space-4);
 }
@@ -472,15 +525,19 @@ body {
 .w-full {
   width: 100%;
 }
+
 .h-full {
   height: 100%;
 }
+
 .min-h-0 {
   min-height: 0;
 }
+
 .flex-1 {
   flex: 1 1 0%;
 }
+
 .flex-shrink-0 {
   flex-shrink: 0;
 }
@@ -488,9 +545,11 @@ body {
 .overflow-hidden {
   overflow: hidden;
 }
+
 .overflow-auto {
   overflow: auto;
 }
+
 .overflow-y-auto {
   overflow-y: auto;
 }

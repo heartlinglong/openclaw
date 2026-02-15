@@ -153,6 +153,7 @@ export class OpenClawApp extends LitElement {
   @state() assistantAgentId = injectedAssistantIdentity.agentId ?? null;
 
   @state() sessionKey = this.settings.sessionKey;
+  @state() threadFilter = "";
   @state() chatLoading = false;
   @state() chatSending = false;
   @state() chatMessage = "";

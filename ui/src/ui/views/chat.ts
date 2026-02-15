@@ -23,6 +23,26 @@ import {
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer.ts";
 import "../components/resizable-divider.ts";
 import { icons } from "../icons.ts";
+
+/** 将 timestamp 转为相对时间字符串，如 "3d", "1w", "2mo" */
+function formatRelativeTime(ts: number | null | undefined): string {
+  if (!ts) return "";
+  const now = Date.now();
+  const diffMs = now - ts;
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+
+  if (months > 0) return `${months}mo`;
+  if (weeks > 0) return `${weeks}w`;
+  if (days > 0) return `${days}d`;
+  if (hours > 0) return `${hours}h`;
+  if (minutes > 0) return `${minutes}m`;
+  return "now";
+}
 import { renderMarkdownSidebar } from "./markdown-sidebar.ts";
 
 export type CompactionIndicatorStatus = {
@@ -34,6 +54,8 @@ export type CompactionIndicatorStatus = {
 export type ChatProps = {
   sessionKey: string;
   onSessionKeyChange: (next: string) => void;
+  threadFilter: string;
+  onThreadFilterChange: (filter: string) => void;
   thinkingLevel: string | null;
   showThinking: boolean;
   loading: boolean;
@@ -931,7 +953,14 @@ export function renderChat(props: ChatProps) {
     displayName: "New thread",
     updatedAt: null,
   };
-  const threads = hasActiveInList ? serverSessions : [syntheticActive, ...serverSessions];
+  const threadsRaw = hasActiveInList ? serverSessions : [syntheticActive, ...serverSessions];
+  const threads = threadsRaw.filter((row) => {
+    if (!props.threadFilter) return true;
+    const q = props.threadFilter.toLowerCase();
+    const label = (row.label || row.displayName || row.key || "").toLowerCase();
+    const model = (row.model || "").toLowerCase();
+    return label.includes(q) || model.includes(q);
+  });
 
   const thread = html`
     <div
@@ -993,13 +1022,24 @@ export function renderChat(props: ChatProps) {
               + New
             </button>
           </div>
-          <div class="ahr-search">Search threads…</div>
+          <div class="ahr-searchbox">
+            <span class="ahr-searchbox__icon">${icons.search}</span>
+            <input
+              class="ahr-searchbox__input"
+              type="text"
+              placeholder="Search threads..."
+              .value=${props.threadFilter}
+              @input=${(e: Event) =>
+                props.onThreadFilterChange((e.target as HTMLInputElement).value)}
+            />
+          </div>
         </div>
 
         <div class="ahr-sidebar__list">
           ${threads.map((row) => {
             const active = row.key === props.sessionKey;
             const label = (row.label || row.displayName || row.key).trim();
+            const relTime = formatRelativeTime(row.updatedAt);
             return html`
               <button
                 class="ahr-thread ${active ? "active" : ""}"
@@ -1007,10 +1047,22 @@ export function renderChat(props: ChatProps) {
                 @click=${() => props.onSessionKeyChange(row.key)}
                 title=${row.key}
               >
-                <div class="ahr-thread__title">${label}</div>
+                <div class="ahr-thread__row">
+                  <div class="ahr-thread__title">${label}</div>
+                  ${relTime ? html`<span class="ahr-thread__time">${relTime}</span>` : nothing}
+                </div>
                 <div class="ahr-thread__meta">
                   ${row.model ? html`<span class="ahr-thread__pill">${row.model}</span>` : nothing}
-                  <span class="ahr-thread__key mono">${row.key}</span>
+                  ${
+                    row.key !== "main" && !row.key.startsWith("new:") // 简单的归档按钮占位，实际功能未绑定
+                      ? html`<span class="ahr-thread__archive-icon" title="Archive" @click=${(
+                          e: Event,
+                        ) => {
+                          e.stopPropagation();
+                          // TODO: implement archive
+                        }}>📥</span>`
+                      : nothing
+                  }
                 </div>
               </button>
             `;
