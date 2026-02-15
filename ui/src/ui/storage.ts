@@ -18,6 +18,14 @@ export type UiSettings = {
 export function loadSettings(): UiSettings {
   const defaultUrl = (() => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
+    // When running the Vite dev server (typically :5173-:5199) locally, the UI origin
+    // is not the gateway origin. Default to the local gateway port for a usable dev flow.
+    const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const port = Number(location.port || "");
+    const looksLikeViteDevPort = Number.isFinite(port) && port >= 5173 && port <= 5199;
+    if (isLocalhost && looksLikeViteDevPort) {
+      return `${proto}://127.0.0.1:18789`;
+    }
     return `${proto}://${location.host}`;
   })();
 

@@ -53,7 +53,9 @@ export type ChatProps = {
   // Chat settings popover
   settingsMenuOpen?: boolean;
   onSettingsMenuOpenChange?: (open: boolean) => void;
-  onOpenQuickSettings?: (section: "models" | "skills" | "cron" | "memory" | "channels") => void;
+  onOpenQuickSettings?: (
+    section: "gateway" | "models" | "skills" | "cron" | "memory" | "channels",
+  ) => void;
   onNavigateToTab?: (tab: "channels" | "cron" | "skills" | "agents" | "config") => void;
   // Image attachments
   attachments?: ChatAttachment[];
@@ -213,7 +215,7 @@ export function renderChat(props: ChatProps) {
   const sidebarOpen = Boolean(props.sidebarOpen && props.onCloseSidebar);
   const settingsMenuOpen = Boolean(props.settingsMenuOpen && props.onSettingsMenuOpenChange);
 
-  const openQuick = (section: "models" | "skills" | "cron" | "memory" | "channels") => {
+  const openQuick = (section: "gateway" | "models" | "skills" | "cron" | "memory" | "channels") => {
     props.onSettingsMenuOpenChange?.(false);
     props.onOpenQuickSettings?.(section);
   };
@@ -274,7 +276,13 @@ export function renderChat(props: ChatProps) {
         <div class="ahr-sidebar__head">
           <div class="ahr-sidebar__head-row">
             <div class="ahr-sidebar__title">Threads</div>
-            <button class="btn ahr-chip" type="button" @click=${props.onNewSession}>+ New</button>
+            <button
+              class="btn ahr-chip"
+              type="button"
+              @click=${() => (props.connected ? props.onNewSession() : openQuick("gateway"))}
+            >
+              + New
+            </button>
           </div>
           <div class="ahr-search">Search threads…</div>
         </div>
@@ -330,6 +338,14 @@ export function renderChat(props: ChatProps) {
                           </div>
                         </div>
                       </div>
+                    <div class="ahr-settings__divider"></div>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("gateway")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.link}</span>
+                          连接 Gateway
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
                       <div class="ahr-settings__divider"></div>
                       <button class="ahr-settings__item" type="button" @click=${() => openQuick("models")}>
                         <span class="ahr-settings__item-left">
@@ -393,9 +409,17 @@ export function renderChat(props: ChatProps) {
             <div class="ahr-chat__head-sub muted">Direct chat session.</div>
           </div>
           <div class="ahr-chat__head-actions">
-            <button class="btn btn--sm" ?disabled=${!props.connected} @click=${props.onRefresh}>
-              Refresh
-            </button>
+            ${
+              props.connected
+                ? html`
+                    <button class="btn btn--sm" @click=${props.onRefresh}>Refresh</button>
+                  `
+                : html`
+                    <button class="btn btn--sm primary" @click=${() => openQuick("gateway")}>
+                      Connect
+                    </button>
+                  `
+            }
           </div>
         </div>
 

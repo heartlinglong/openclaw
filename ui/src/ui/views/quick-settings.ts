@@ -1,8 +1,9 @@
 import { html, nothing } from "lit";
 import type { Tab } from "../navigation.ts";
+import type { UiSettings } from "../storage.ts";
 import { icons } from "../icons.ts";
 
-export type QuickSettingsSection = "models" | "skills" | "cron" | "memory" | "channels";
+export type QuickSettingsSection = "gateway" | "models" | "skills" | "cron" | "memory" | "channels";
 
 export type ModelOption = { id: string; label: string };
 
@@ -14,6 +15,9 @@ export type QuickSettingsProps = {
   open: boolean;
   connected: boolean;
   section: QuickSettingsSection;
+  settings: UiSettings;
+  password: string;
+  lastError: string | null;
   agentId: string | null;
   configLoaded: boolean;
   configSaving: boolean;
@@ -24,6 +28,9 @@ export type QuickSettingsProps = {
   onClose: () => void;
   onSectionChange: (section: QuickSettingsSection) => void;
   onNavigate: (tab: Tab, opts?: QuickSettingsNavigateOptions) => void;
+  onSettingsChange: (next: UiSettings) => void;
+  onPasswordChange: (next: string) => void;
+  onConnect: () => void;
   onModelPrimaryChange: (modelId: string | null) => void;
   onModelFallbacksChange: (fallbacks: string[]) => void;
   onSaveConfig: () => void;
@@ -31,6 +38,8 @@ export type QuickSettingsProps = {
 
 function sectionLabel(section: QuickSettingsSection) {
   switch (section) {
+    case "gateway":
+      return "连接";
     case "models":
       return "模型";
     case "skills":
@@ -54,6 +63,81 @@ function parseCsvList(raw: string) {
 }
 
 function renderSectionContent(props: QuickSettingsProps) {
+  if (props.section === "gateway") {
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const suggestedGateway = isLocal ? `${proto}://127.0.0.1:18789` : props.settings.gatewayUrl;
+    const lastError = props.lastError?.trim() || null;
+
+    return html`
+      <div class="qs-section-title">连接 Gateway</div>
+      <div class="muted qs-section-sub">
+        你现在是通过 Vite dev server 打开的页面，需单独连接到 Gateway WebSocket 才能聊天/加载 Threads。
+      </div>
+
+      ${lastError ? html`<div class="callout danger" style="margin-top: 12px;">${lastError}</div>` : nothing}
+
+      <div class="form-grid" style="margin-top: 14px;">
+        <label class="field">
+          <span>Gateway URL (ws/wss)</span>
+          <input
+            class="mono"
+            .value=${props.settings.gatewayUrl}
+            placeholder="ws://127.0.0.1:18789"
+            @input=${(e: Event) => {
+              const v = (e.target as HTMLInputElement).value;
+              props.onSettingsChange({ ...props.settings, gatewayUrl: v });
+            }}
+          />
+        </label>
+
+        <label class="field">
+          <span>Token (optional)</span>
+          <input
+            type="password"
+            class="mono"
+            .value=${props.settings.token}
+            placeholder="gateway token"
+            @input=${(e: Event) => {
+              const v = (e.target as HTMLInputElement).value;
+              props.onSettingsChange({ ...props.settings, token: v });
+            }}
+          />
+        </label>
+
+        <label class="field">
+          <span>Password (optional)</span>
+          <input
+            type="password"
+            class="mono"
+            .value=${props.password}
+            placeholder="shared/system password"
+            @input=${(e: Event) => props.onPasswordChange((e.target as HTMLInputElement).value)}
+          />
+        </label>
+      </div>
+
+      <div class="row" style="margin-top: 14px;">
+        <button
+          class="btn"
+          @click=${() => {
+            props.onSettingsChange({ ...props.settings, gatewayUrl: suggestedGateway });
+          }}
+          title="Fill local dev gateway URL"
+        >
+          ${icons.link} 用本机 Gateway (${suggestedGateway})
+        </button>
+        <button class="btn primary" @click=${() => props.onConnect()}>
+          ${props.connected ? icons.check : icons.zap} ${props.connected ? "已连接" : "Connect"}
+        </button>
+      </div>
+
+      <div class="muted" style="margin-top: 10px;">
+        本机启动 Gateway 示例: <span class="mono">pnpm -C vendor/openclaw gateway:dev</span>
+      </div>
+    `;
+  }
+
   if (!props.connected) {
     return html`
       <div class="callout danger">未连接 Gateway，无法修改设置。</div>
@@ -196,7 +280,14 @@ export function renderQuickSettings(props: QuickSettingsProps) {
     return nothing;
   }
 
-  const sections: QuickSettingsSection[] = ["models", "skills", "cron", "memory", "channels"];
+  const sections: QuickSettingsSection[] = [
+    "gateway",
+    "models",
+    "skills",
+    "cron",
+    "memory",
+    "channels",
+  ];
 
   return html`
     <div

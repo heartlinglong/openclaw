@@ -38,7 +38,8 @@ export default defineConfig(() => {
     server: {
       host: true,
       port: resolvedPort,
-      strictPort: true,
+      // Prefer starting even when the default port is taken (Vite will try the next ports).
+      strictPort: false,
     },
   };
 });

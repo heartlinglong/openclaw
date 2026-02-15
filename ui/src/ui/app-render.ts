@@ -93,7 +93,9 @@ export function renderApp(state: AppViewState) {
   const presenceCount = state.presenceEntries.length;
   const sessionsCount = state.sessionsResult?.count ?? null;
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
-  const chatDisabledReason = state.connected ? null : "Disconnected from gateway.";
+  const chatDisabledReason = state.connected
+    ? null
+    : "Disconnected from gateway. Open 设置 -> 连接 to connect to ws://127.0.0.1:18789 (local).";
   const isChat = state.tab === "chat";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
@@ -1077,6 +1079,9 @@ export function renderApp(state: AppViewState) {
         open: app.quickSettingsOpen,
         connected: state.connected,
         section: app.quickSettingsSection,
+        settings: state.settings,
+        password: state.password,
+        lastError: state.lastError,
         agentId: resolvedAgentId,
         configLoaded: Boolean(configValue),
         configSaving: state.configSaving,
@@ -1097,6 +1102,9 @@ export function renderApp(state: AppViewState) {
           }
           state.setTab(tab);
         },
+        onSettingsChange: (next) => state.applySettings(next),
+        onPasswordChange: (next) => (state.password = next),
+        onConnect: () => state.connect(),
         onModelPrimaryChange: (modelId) => {
           if (!quickConfigValue || !resolvedAgentId) return;
           const list = (quickConfigValue as any)?.agents?.list;
