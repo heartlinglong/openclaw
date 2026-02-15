@@ -24,7 +24,8 @@ export function loadSettings(): UiSettings {
     const port = Number(location.port || "");
     const looksLikeViteDevPort = Number.isFinite(port) && port >= 5173 && port <= 5199;
     if (isLocalhost && looksLikeViteDevPort) {
-      return `${proto}://127.0.0.1:18789`;
+      // AgentHR dev gateway runs on a different port than the default OpenClaw gateway.
+      return `${proto}://127.0.0.1:19001`;
     }
     return `${proto}://${location.host}`;
   })();

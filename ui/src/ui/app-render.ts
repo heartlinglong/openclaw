@@ -95,7 +95,7 @@ export function renderApp(state: AppViewState) {
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
   const chatDisabledReason = state.connected
     ? null
-    : "Disconnected from gateway. Open 设置 -> 连接 to connect to ws://127.0.0.1:18789 (local).";
+    : "Disconnected from gateway. Open 设置 -> 连接 to connect to ws://127.0.0.1:19001 (local).";
   const isChat = state.tab === "chat";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;

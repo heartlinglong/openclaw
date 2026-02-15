@@ -66,7 +66,10 @@ function renderSectionContent(props: QuickSettingsProps) {
   if (props.section === "gateway") {
     const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    const suggestedGateway = isLocal ? `${proto}://127.0.0.1:18789` : props.settings.gatewayUrl;
+    // Prefer whatever the user already configured; otherwise suggest AgentHR dev gateway.
+    const suggestedGateway =
+      props.settings.gatewayUrl.trim() ||
+      (isLocal ? `${proto}://127.0.0.1:19001` : props.settings.gatewayUrl);
     const lastError = props.lastError?.trim() || null;
 
     return html`
@@ -83,7 +86,7 @@ function renderSectionContent(props: QuickSettingsProps) {
           <input
             class="mono"
             .value=${props.settings.gatewayUrl}
-            placeholder="ws://127.0.0.1:18789"
+            placeholder="ws://127.0.0.1:19001"
             @input=${(e: Event) => {
               const v = (e.target as HTMLInputElement).value;
               props.onSettingsChange({ ...props.settings, gatewayUrl: v });
