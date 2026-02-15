@@ -263,6 +263,22 @@ export class OpenClawApp extends LitElement {
 
   // AgentHR directory panel (HR Core DB-backed lookup)
   @state() actionPanelTab: "context" | "directory" | "activity" | "flow" = "directory";
+  // Keep right-panel state per session key so switching threads doesn't leak context.
+  private actionPanelStateBySession: Record<
+    string,
+    {
+      actionPanelTab: "context" | "directory" | "activity" | "flow";
+      sidebarOpen: boolean;
+      sidebarContent: string | null;
+      sidebarError: string | null;
+      hrCoreQuery: string;
+      hrCoreSelectedRef: {
+        kind: "employee" | "orgUnit" | "position" | "legalEntity";
+        key: string;
+      } | null;
+      hrCoreActiveEventCode: string | null;
+    }
+  > = {};
   @state() hrCoreSettings: HrCoreSettings = loadHrCoreSettings();
   @state() hrCoreLoginUsername = "hr001";
   @state() hrCoreLoginPassword = "";
@@ -299,6 +315,69 @@ export class OpenClawApp extends LitElement {
   @state() hrCoreActiveEventHirePreview:
     | HrCoreHireIntakeValidateResponse["confirmation_preview"]
     | null = null;
+
+  saveActionPanelStateForSession(sessionKey: string) {
+    const key = (sessionKey ?? "").trim();
+    if (!key) return;
+    const selectedRef = this.hrCoreSelected
+      ? this.hrCoreSelected.kind === "employee"
+        ? { kind: "employee" as const, key: this.hrCoreSelected.empNo }
+        : this.hrCoreSelected.kind === "orgUnit"
+          ? { kind: "orgUnit" as const, key: this.hrCoreSelected.code }
+          : this.hrCoreSelected.kind === "position"
+            ? { kind: "position" as const, key: this.hrCoreSelected.code }
+            : { kind: "legalEntity" as const, key: this.hrCoreSelected.code }
+      : null;
+    this.actionPanelStateBySession[key] = {
+      actionPanelTab: this.actionPanelTab,
+      sidebarOpen: this.sidebarOpen,
+      sidebarContent: this.sidebarContent ?? null,
+      sidebarError: this.sidebarError ?? null,
+      hrCoreQuery: this.hrCoreQuery ?? "",
+      hrCoreSelectedRef: selectedRef,
+      hrCoreActiveEventCode: this.hrCoreActiveEventCode ?? null,
+    };
+  }
+
+  restoreActionPanelStateForSession(sessionKey: string) {
+    const key = (sessionKey ?? "").trim();
+    const saved = key ? this.actionPanelStateBySession[key] : undefined;
+
+    // Reset to defaults first to avoid showing another thread's state.
+    this.actionPanelTab = saved?.actionPanelTab ?? "directory";
+    this.sidebarOpen = saved?.sidebarOpen ?? false;
+    this.sidebarContent = saved?.sidebarContent ?? null;
+    this.sidebarError = saved?.sidebarError ?? null;
+
+    // Per-thread directory/search selection.
+    this.hrCoreError = null;
+    this.hrCoreQuery = "";
+    this.hrCoreSearchNotice = null;
+    this.hrCoreSearchResult = null;
+    this.hrCoreSelected = null;
+
+    // Per-thread flow state.
+    this.hrCoreActiveEventError = null;
+    this.hrCoreActiveEvent = null;
+    this.hrCoreActiveEventHirePreview = null;
+    this.hrCoreActiveEventCode = saved?.hrCoreActiveEventCode ?? null;
+
+    const q = (saved?.hrCoreQuery ?? "").trim();
+    if (q) {
+      this.setHrCoreQuery(q);
+    }
+
+    if (saved?.hrCoreSelectedRef?.key) {
+      void this.selectHrCoreHit({
+        kind: saved.hrCoreSelectedRef.kind as any,
+        key: saved.hrCoreSelectedRef.key,
+      });
+    }
+
+    if (this.hrCoreActiveEventCode && this.hrCoreSettings.token.trim()) {
+      void this.loadActiveEvent(this.hrCoreActiveEventCode, { force: true });
+    }
+  }
 
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;

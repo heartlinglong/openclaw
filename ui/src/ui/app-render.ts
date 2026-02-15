@@ -890,6 +890,9 @@ export function renderApp(state: AppViewState) {
             ? renderChat({
                 sessionKey: state.sessionKey,
                 onSessionKeyChange: (next) => {
+                  const app = state as unknown as OpenClawApp;
+                  const prev = state.sessionKey;
+                  app.saveActionPanelStateForSession(prev);
                   state.sessionKey = next;
                   state.chatMessage = "";
                   state.chatAttachments = [];
@@ -897,13 +900,14 @@ export function renderApp(state: AppViewState) {
                   state.chatRunId = null;
                   (state as unknown as OpenClawApp).chatStreamStartedAt = null;
                   state.chatQueue = [];
-                  (state as unknown as OpenClawApp).resetToolStream();
-                  (state as unknown as OpenClawApp).resetChatScroll();
+                  app.resetToolStream();
+                  app.resetChatScroll();
                   state.applySettings({
                     ...state.settings,
                     sessionKey: next,
                     lastActiveSessionKey: next,
                   });
+                  app.restoreActionPanelStateForSession(next);
                   void state.loadAssistantIdentity();
                   void loadChatHistory(state as unknown as ChatState);
                   void refreshChatAvatar(state as unknown as ChatHost);
