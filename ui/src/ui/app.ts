@@ -527,7 +527,56 @@ export class OpenClawApp extends LitElement {
       return false;
     };
 
-    const employees = await hrCoreListEmployees(this.hrCoreSettings, needleRaw, 12);
+    const empNoExact = /^\d{8}$/.test(needleRaw) ? needleRaw : null;
+    const maybeUsername = /^[a-z][a-z0-9_\\-]{2,31}$/i.test(needleRaw) ? needleRaw : null;
+    const positionCode = /^p\\d{3,}$/i.test(needleRaw) ? needleRaw.toUpperCase() : null;
+    const orgUnitCode = /^[A-Z]{2,10}$/.test(needleRaw) ? needleRaw.toUpperCase() : null;
+    const legalEntityCode = /^[A-Z]{2}\\d{3,}$/.test(needleRaw) ? needleRaw.toUpperCase() : null;
+
+    const employeeQueries: Array<Promise<HrCoreEmployee[]>> = [];
+    // Generic full-text-ish q
+    employeeQueries.push(hrCoreListEmployees(this.hrCoreSettings, { q: needleRaw, limit: 12 }));
+    // Explicit patterns
+    if (empNoExact) {
+      employeeQueries.push(
+        hrCoreListEmployees(this.hrCoreSettings, { emp_no: empNoExact, limit: 12 }),
+      );
+    }
+    // Username: treat as manager username (returns directs under that manager)
+    if (maybeUsername) {
+      employeeQueries.push(
+        hrCoreListEmployees(this.hrCoreSettings, { manager_username: maybeUsername, limit: 12 }),
+      );
+    }
+    if (orgUnitCode) {
+      employeeQueries.push(
+        hrCoreListEmployees(this.hrCoreSettings, { org_unit_code: orgUnitCode, limit: 12 }),
+      );
+    }
+    if (positionCode) {
+      employeeQueries.push(
+        hrCoreListEmployees(this.hrCoreSettings, { position_code: positionCode, limit: 12 }),
+      );
+    }
+    if (legalEntityCode) {
+      employeeQueries.push(
+        hrCoreListEmployees(this.hrCoreSettings, {
+          legal_entity_code: legalEntityCode,
+          limit: 12,
+        }),
+      );
+    }
+
+    const employeeBatches = await Promise.all(employeeQueries);
+    const employeeByEmpNo = new Map<string, HrCoreEmployee>();
+    for (const batch of employeeBatches) {
+      for (const e of batch) {
+        if (e?.emp_no) {
+          employeeByEmpNo.set(e.emp_no, e);
+        }
+      }
+    }
+    const employees = Array.from(employeeByEmpNo.values()).slice(0, 12);
 
     const legal_entities = this.hrCoreLegalEntities
       .filter((le) => matches(le.code, le.name, le.country))

@@ -157,12 +157,38 @@ export async function hrCoreListLegalEntities(settings: HrCoreSettings) {
   });
 }
 
-export async function hrCoreListEmployees(settings: HrCoreSettings, q?: string, limit = 50) {
+export async function hrCoreListEmployees(
+  settings: HrCoreSettings,
+  filters?: {
+    q?: string;
+    emp_no?: string;
+    manager_username?: string;
+    org_unit_code?: string;
+    position_code?: string;
+    legal_entity_code?: string;
+    limit?: number;
+  },
+) {
   const params = new URLSearchParams();
-  if (q && q.trim()) {
-    params.set("q", q.trim());
+  if (filters?.q && filters.q.trim()) {
+    params.set("q", filters.q.trim());
   }
-  params.set("limit", String(limit));
+  if (filters?.emp_no && filters.emp_no.trim()) {
+    params.set("emp_no", filters.emp_no.trim());
+  }
+  if (filters?.manager_username && filters.manager_username.trim()) {
+    params.set("manager_username", filters.manager_username.trim());
+  }
+  if (filters?.org_unit_code && filters.org_unit_code.trim()) {
+    params.set("org_unit_code", filters.org_unit_code.trim());
+  }
+  if (filters?.position_code && filters.position_code.trim()) {
+    params.set("position_code", filters.position_code.trim());
+  }
+  if (filters?.legal_entity_code && filters.legal_entity_code.trim()) {
+    params.set("legal_entity_code", filters.legal_entity_code.trim());
+  }
+  params.set("limit", String(filters?.limit ?? 50));
   const qs = params.toString();
   return requestJson<HrCoreEmployeeListItem[]>(settings, {
     method: "GET",
