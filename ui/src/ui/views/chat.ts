@@ -4,6 +4,8 @@ import { repeat } from "lit/directives/repeat.js";
 import type { HrCoreSettings } from "../agenthr/hr-core-storage.ts";
 import type {
   HrCoreEmployee,
+  HrCoreEvent,
+  HrCoreHireIntakeValidateResponse,
   HrCoreLegalEntity,
   HrCoreOrgUnit,
   HrCorePosition,
@@ -67,8 +69,14 @@ export type ChatProps = {
   ) => void;
   onNavigateToTab?: (tab: "channels" | "cron" | "skills" | "agents" | "config") => void;
   // Right action panel
-  actionPanelTab: "context" | "directory" | "activity";
-  onActionPanelTabChange: (tab: "context" | "directory" | "activity") => void;
+  actionPanelTab: "context" | "directory" | "activity" | "flow";
+  onActionPanelTabChange: (tab: "context" | "directory" | "activity" | "flow") => void;
+  hrCoreActiveEventCode: string | null;
+  hrCoreActiveEventLoading: boolean;
+  hrCoreActiveEventError: string | null;
+  hrCoreActiveEvent: HrCoreEvent | null;
+  hrCoreActiveEventHirePreview: HrCoreHireIntakeValidateResponse["confirmation_preview"] | null;
+  onHrCoreActiveEventRefresh: () => void;
   // HR Core directory (DB-backed; not memory)
   hrCoreSettings: HrCoreSettings;
   hrCoreLoginUsername: string;
@@ -724,6 +732,156 @@ function renderDirectory(props: ChatProps) {
   `;
 }
 
+function renderFlow(props: ChatProps) {
+  const token = props.hrCoreSettings.token?.trim() ?? "";
+  const code = props.hrCoreActiveEventCode;
+  const ev = props.hrCoreActiveEvent;
+
+  const stepForHire = (statusRaw: string) => {
+    const s = (statusRaw ?? "").toUpperCase();
+    if (s === "DRAFT") return 0;
+    if (s === "CONFIRMED") return 1;
+    if (s === "SUBMITTED") return 2;
+    if (s === "APPROVED") return 3;
+    if (s === "EFFECTIVE") return 4;
+    return -1;
+  };
+
+  const renderStep = (label: string, idx: number, activeIdx: number) => {
+    const state = idx < activeIdx ? "done" : idx === activeIdx ? "active" : "todo";
+    return html`
+      <div class="ahr-flow__step ${state}">
+        <span class="ahr-flow__dot" aria-hidden="true"></span>
+        <div class="ahr-flow__label">${label}</div>
+      </div>
+    `;
+  };
+
+  const renderKv = (k: string, value: unknown) => html`
+    <div class="ahr-kv">
+      <div class="ahr-kv__k muted mono">${k}</div>
+      <div class="ahr-kv__v mono">${value == null || value === "" ? "-" : String(value)}</div>
+    </div>
+  `;
+
+  const snapshot = (() => {
+    if (!ev) return nothing;
+    if (ev.type !== "HIRE") {
+      return html`
+        <div class="ahr-card">
+          <div class="ahr-card__title">事件快照</div>
+          <div class="ahr-kvgrid">
+            ${renderKv("eventCode", ev.code)}
+            ${renderKv("type", ev.type)}
+            ${renderKv("status", ev.status)}
+          </div>
+        </div>
+      `;
+    }
+
+    const p = props.hrCoreActiveEventHirePreview;
+    return html`
+      <div class="ahr-card">
+        <div class="ahr-card__title">事件快照</div>
+        <div class="ahr-card__sub mono">${ev.code}</div>
+        <div class="ahr-kvgrid">
+          ${renderKv("status", ev.status)}
+          ${p ? renderKv("emp_no", p.emp_no?.display) : nothing}
+          ${p ? renderKv("legal_name", p.profile?.legal_name) : nothing}
+          ${p ? renderKv("hire_date", p.employment?.hire_date) : nothing}
+          ${p ? renderKv("legal_entity", p.employment?.legal_entity_code) : nothing}
+          ${p ? renderKv("org_unit", p.job_info?.org_unit_code) : nothing}
+          ${p ? renderKv("position", p.job_info?.position_code) : nothing}
+          ${p ? renderKv("manager", p.job_info?.manager_username) : nothing}
+          ${
+            p
+              ? renderKv(
+                  "event_reason",
+                  `${p.employment?.reason_code ?? "-"} (${p.employment?.reason_name ?? "-"})`,
+                )
+              : nothing
+          }
+        </div>
+      </div>
+    `;
+  })();
+
+  const flow = (() => {
+    if (!ev) return nothing;
+    if (ev.type !== "HIRE") {
+      return html`
+        <div class="ahr-card">
+          <div class="ahr-card__title">流程</div>
+          <div class="muted ahr-card__sub">暂未为 ${ev.type} 事件配置步骤条。</div>
+        </div>
+      `;
+    }
+    const activeIdx = stepForHire(ev.status);
+    return html`
+      <div class="ahr-card">
+        <div class="ahr-card__title">流程</div>
+        <div class="muted ahr-card__sub">入职事件状态流转</div>
+        <div class="ahr-flow">
+          ${renderStep("Create (DRAFT)", 0, activeIdx)}
+          ${renderStep("Confirm (CONFIRMED)", 1, activeIdx)}
+          ${renderStep("Submit (SUBMITTED)", 2, activeIdx)}
+          ${renderStep("Approve (APPROVED)", 3, activeIdx)}
+          ${renderStep("Effective (EFFECTIVE)", 4, activeIdx)}
+        </div>
+      </div>
+    `;
+  })();
+
+  return html`
+    <div class="ahr-dir-top">
+      <div class="ahr-dir-meta">
+        <span class="ahr-badge">Flow</span>
+        ${
+          code
+            ? html`<span class="mono">${code}</span>`
+            : html`
+                <span class="muted">No event</span>
+              `
+        }
+      </div>
+      <button
+        class="btn"
+        @click=${props.onHrCoreActiveEventRefresh}
+        ?disabled=${props.hrCoreActiveEventLoading || !token || !code}
+      >
+        ${props.hrCoreActiveEventLoading ? icons.loader : nothing} Refresh
+      </button>
+    </div>
+
+    ${
+      !token
+        ? html`
+            <div class="callout info">在“设置 → HR Core”登录后可查看事件流程与实时状态。</div>
+          `
+        : nothing
+    }
+
+    ${
+      token && !code
+        ? html`
+            <div class="callout info">
+              对话中出现事件码（例如 EVT-20260215-001）后，这里会自动显示流程与快照。
+            </div>
+          `
+        : nothing
+    }
+
+    ${
+      token && code && props.hrCoreActiveEventError
+        ? html`<div class="callout danger">${props.hrCoreActiveEventError}</div>`
+        : nothing
+    }
+
+    ${flow}
+    ${snapshot}
+  `;
+}
+
 export function renderChat(props: ChatProps) {
   const canCompose = props.connected;
   const isBusy = props.sending || props.stream !== null;
@@ -1018,6 +1176,13 @@ export function renderChat(props: ChatProps) {
             Context
           </button>
           <button
+            class="ahr-tab ${props.actionPanelTab === "flow" ? "active" : ""}"
+            type="button"
+            @click=${() => props.onActionPanelTabChange("flow")}
+          >
+            Flow
+          </button>
+          <button
             class="ahr-tab ${props.actionPanelTab === "directory" ? "active" : ""}"
             type="button"
             @click=${() => props.onActionPanelTabChange("directory")}
@@ -1034,25 +1199,27 @@ export function renderChat(props: ChatProps) {
         </div>
         <div class="ahr-action__body">
           ${
-            props.actionPanelTab === "directory"
-              ? renderDirectory(props)
-              : props.actionPanelTab === "activity"
-                ? html`
-                    <div class="muted">Activity (WIP)</div>
-                  `
-                : sidebarOpen
-                  ? renderMarkdownSidebar({
-                      content: props.sidebarContent ?? null,
-                      error: props.sidebarError ?? null,
-                      onClose: props.onCloseSidebar!,
-                      onViewRawText: () => {
-                        if (!props.sidebarContent || !props.onOpenSidebar) return;
-                        props.onOpenSidebar(`\`\`\`\n${props.sidebarContent}\n\`\`\``);
-                      },
-                    })
-                  : html`
-                      <div class="muted">Tool output will appear here.</div>
+            props.actionPanelTab === "flow"
+              ? renderFlow(props)
+              : props.actionPanelTab === "directory"
+                ? renderDirectory(props)
+                : props.actionPanelTab === "activity"
+                  ? html`
+                      <div class="muted">Activity (WIP)</div>
                     `
+                  : sidebarOpen
+                    ? renderMarkdownSidebar({
+                        content: props.sidebarContent ?? null,
+                        error: props.sidebarError ?? null,
+                        onClose: props.onCloseSidebar!,
+                        onViewRawText: () => {
+                          if (!props.sidebarContent || !props.onOpenSidebar) return;
+                          props.onOpenSidebar(`\`\`\`\n${props.sidebarContent}\n\`\`\``);
+                        },
+                      })
+                    : html`
+                        <div class="muted">Tool output will appear here.</div>
+                      `
           }
         </div>
       </div>

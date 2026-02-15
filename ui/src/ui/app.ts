@@ -36,16 +36,20 @@ import {
 } from "./agenthr/hr-core-storage.ts";
 import {
   hrCoreGetEmployee,
+  hrCoreGetEvent,
   hrCoreGetLegalEntity,
   hrCoreGetOrgUnit,
   hrCoreGetPosition,
   HrCoreHttpError,
+  hrCoreHireIntakeValidate,
   hrCoreListEmployees,
   hrCoreListLegalEntities,
   hrCoreListOrgUnits,
   hrCoreListPositions,
   hrCoreLogin,
   hrCoreSearch,
+  type HrCoreEvent,
+  type HrCoreHireIntakeValidateResponse,
   type HrCoreEmployee,
   type HrCoreLegalEntity,
   type HrCoreOrgUnit,
@@ -258,7 +262,7 @@ export class OpenClawApp extends LitElement {
   @state() chatSettingsMenuOpen = false;
 
   // AgentHR directory panel (HR Core DB-backed lookup)
-  @state() actionPanelTab: "context" | "directory" | "activity" = "directory";
+  @state() actionPanelTab: "context" | "directory" | "activity" | "flow" = "directory";
   @state() hrCoreSettings: HrCoreSettings = loadHrCoreSettings();
   @state() hrCoreLoginUsername = "hr001";
   @state() hrCoreLoginPassword = "";
@@ -286,6 +290,15 @@ export class OpenClawApp extends LitElement {
   @state() hrCorePositionEmployeesError: Record<string, string> = {};
   @state() hrCoreSearchNotice: string | null = null;
   private hrCoreSearchTimer: number | null = null;
+
+  // Workflow panel: live view of the latest HR Core event referenced in chat.
+  @state() hrCoreActiveEventCode: string | null = null;
+  @state() hrCoreActiveEventLoading = false;
+  @state() hrCoreActiveEventError: string | null = null;
+  @state() hrCoreActiveEvent: HrCoreEvent | null = null;
+  @state() hrCoreActiveEventHirePreview:
+    | HrCoreHireIntakeValidateResponse["confirmation_preview"]
+    | null = null;
 
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;
@@ -382,6 +395,13 @@ export class OpenClawApp extends LitElement {
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     handleUpdated(this as unknown as Parameters<typeof handleUpdated>[0], changed);
+    if (
+      changed.has("chatMessages") ||
+      changed.has("chatToolMessages") ||
+      changed.has("chatStream")
+    ) {
+      this.syncActiveEventFromChat();
+    }
   }
 
   connect() {
@@ -415,6 +435,10 @@ export class OpenClawApp extends LitElement {
       this.hrCoreLoginPassword = "";
       // Preload static lists so Directory can render org tree + positions immediately.
       void this.ensureHrCoreStaticListsLoaded().catch((err) => (this.hrCoreError = String(err)));
+      // If the chat already referenced an event code, load it now that we have a token.
+      if (this.hrCoreActiveEventCode) {
+        void this.loadActiveEvent(this.hrCoreActiveEventCode, { force: true });
+      }
     } catch (err) {
       this.hrCoreError = String(err);
     } finally {
@@ -435,6 +459,92 @@ export class OpenClawApp extends LitElement {
     this.hrCorePositionEmployeesLoading = {};
     this.hrCorePositionEmployees = {};
     this.hrCorePositionEmployeesError = {};
+    this.hrCoreActiveEventCode = null;
+    this.hrCoreActiveEventLoading = false;
+    this.hrCoreActiveEventError = null;
+    this.hrCoreActiveEvent = null;
+    this.hrCoreActiveEventHirePreview = null;
+  }
+
+  private extractLatestEventCodeFromText(text: string): string | null {
+    const re = /\bEVT-\d{8}-\d{3}\b/g;
+    let m: RegExpExecArray | null = null;
+    let last: string | null = null;
+    while ((m = re.exec(text)) != null) {
+      last = m[0] ?? last;
+    }
+    return last;
+  }
+
+  private extractLatestEventCodeFromMessages(messages: unknown[]): string | null {
+    const re = /\bEVT-\d{8}-\d{3}\b/g;
+    let last: string | null = null;
+    for (const raw of messages) {
+      const msg = raw as Record<string, unknown>;
+      const content = msg.content;
+      if (typeof content === "string") {
+        for (const match of content.matchAll(re)) {
+          last = match[0] ?? last;
+        }
+        continue;
+      }
+      if (Array.isArray(content)) {
+        for (const item of content) {
+          const x = item as Record<string, unknown>;
+          const t = typeof x.text === "string" ? x.text : "";
+          if (!t) continue;
+          for (const match of t.matchAll(re)) {
+            last = match[0] ?? last;
+          }
+        }
+      }
+      const text = typeof msg.text === "string" ? msg.text : "";
+      if (text) {
+        for (const match of text.matchAll(re)) {
+          last = match[0] ?? last;
+        }
+      }
+    }
+    return last;
+  }
+
+  private syncActiveEventFromChat() {
+    const fromStream = this.chatStream
+      ? this.extractLatestEventCodeFromText(this.chatStream)
+      : null;
+    const fromTools = this.extractLatestEventCodeFromMessages(this.chatToolMessages);
+    const fromHistory = this.extractLatestEventCodeFromMessages(this.chatMessages);
+    const next = (fromStream ?? fromTools ?? fromHistory)?.trim() ?? null;
+    if (!next || next === this.hrCoreActiveEventCode) return;
+    this.hrCoreActiveEventCode = next;
+    void this.loadActiveEvent(next);
+  }
+
+  async loadActiveEvent(eventCode: string, opts?: { force?: boolean }) {
+    const code = (eventCode ?? "").trim();
+    if (!code) return;
+    if (!this.hrCoreSettings.token.trim()) {
+      this.hrCoreActiveEventError = "HR Core token missing; login in Settings to view event flow.";
+      return;
+    }
+    const force = Boolean(opts?.force);
+    if (!force && this.hrCoreActiveEvent?.code === code) return;
+    if (this.hrCoreActiveEventLoading) return;
+    this.hrCoreActiveEventLoading = true;
+    this.hrCoreActiveEventError = null;
+    try {
+      const ev = await hrCoreGetEvent(this.hrCoreSettings, code);
+      this.hrCoreActiveEvent = ev;
+      this.hrCoreActiveEventHirePreview = null;
+      if (ev.type === "HIRE" && ev.payload) {
+        const res = await hrCoreHireIntakeValidate(this.hrCoreSettings, ev.payload);
+        this.hrCoreActiveEventHirePreview = res.confirmation_preview ?? null;
+      }
+    } catch (err) {
+      this.hrCoreActiveEventError = String(err);
+    } finally {
+      this.hrCoreActiveEventLoading = false;
+    }
   }
 
   setHrCoreQuery(next: string) {

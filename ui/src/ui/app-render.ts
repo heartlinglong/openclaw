@@ -1004,6 +1004,19 @@ export function renderApp(state: AppViewState) {
                 hrCorePositionEmployees: (state as unknown as OpenClawApp).hrCorePositionEmployees,
                 hrCorePositionEmployeesError: (state as unknown as OpenClawApp)
                   .hrCorePositionEmployeesError,
+                hrCoreActiveEventCode: (state as unknown as OpenClawApp).hrCoreActiveEventCode,
+                hrCoreActiveEventLoading: (state as unknown as OpenClawApp)
+                  .hrCoreActiveEventLoading,
+                hrCoreActiveEventError: (state as unknown as OpenClawApp).hrCoreActiveEventError,
+                hrCoreActiveEvent: (state as unknown as OpenClawApp).hrCoreActiveEvent,
+                hrCoreActiveEventHirePreview: (state as unknown as OpenClawApp)
+                  .hrCoreActiveEventHirePreview,
+                onHrCoreActiveEventRefresh: () => {
+                  const app = state as unknown as OpenClawApp;
+                  if (app.hrCoreActiveEventCode) {
+                    void app.loadActiveEvent(app.hrCoreActiveEventCode, { force: true });
+                  }
+                },
                 onHrCoreSettingsChange: (next) =>
                   (state as unknown as OpenClawApp).setHrCoreSettings(next),
                 onHrCoreLoginUsernameChange: (next) =>

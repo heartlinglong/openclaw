@@ -26,6 +26,54 @@ export type HrCoreLoginResult = {
   user: HrCoreUser;
 };
 
+export type HrCoreEvent = {
+  id: string;
+  code: string;
+  type: string;
+  status: string;
+  payload: JsonValue;
+  employee_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HrCoreHireIntakeValidateResponse = {
+  ok_to_create: boolean;
+  missing_required: Array<{ key: string; label: string }>;
+  missing_optional: Array<{ key: string; label: string }>;
+  next_action: string;
+  confirmation_preview: {
+    scene: "hire_confirmation";
+    emp_no: {
+      value: string | null;
+      display: string;
+      source: "provided" | "to_be_assigned_on_effective";
+    };
+    profile: {
+      legal_name: string | null;
+      primary_phone: string | null;
+      primary_email: string | null;
+    };
+    employment: {
+      legal_entity_code: string | null;
+      legal_entity_name: string | null;
+      hire_date: string | null;
+      regularization_date: string | null;
+      reason_code: string | null;
+      reason_name?: string | null;
+    };
+    job_info: {
+      org_unit_code: string | null;
+      org_unit_name: string | null;
+      position_code: string | null;
+      position_name: string | null;
+      manager_username: string | null;
+      manager_display_name: string | null;
+      org_chain_text: string | null;
+    };
+  };
+};
+
 export type HrCoreSearchResult = {
   q: string;
   employees: Array<{
@@ -221,5 +269,20 @@ export async function hrCoreGetPosition(settings: HrCoreSettings, code: string) 
   return requestJson<HrCorePosition>(settings, {
     method: "GET",
     path: `/api/v1/positions/${encodeURIComponent(code)}`,
+  });
+}
+
+export async function hrCoreGetEvent(settings: HrCoreSettings, eventCode: string) {
+  return requestJson<HrCoreEvent>(settings, {
+    method: "GET",
+    path: `/api/v1/events/${encodeURIComponent(eventCode)}`,
+  });
+}
+
+export async function hrCoreHireIntakeValidate(settings: HrCoreSettings, payload: JsonValue) {
+  return requestJson<HrCoreHireIntakeValidateResponse>(settings, {
+    method: "POST",
+    path: "/api/v1/tools/hire-intake-validate",
+    body: payload,
   });
 }
