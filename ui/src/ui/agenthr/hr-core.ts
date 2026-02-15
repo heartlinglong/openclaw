@@ -109,6 +109,8 @@ export async function hrCoreLogin(
   return requestJson<HrCoreLoginResult>(settings, {
     method: "POST",
     path: "/api/v1/auth/login",
+    // Avoid sending any stale Authorization header when logging in.
+    token: "",
     body: { username, password },
   });
 }

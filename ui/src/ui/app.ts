@@ -380,11 +380,13 @@ export class OpenClawApp extends LitElement {
     this.hrCoreError = null;
     this.hrCoreLoginBusy = true;
     try {
-      const res = await hrCoreLogin(
-        this.hrCoreSettings,
-        this.hrCoreLoginUsername.trim(),
-        this.hrCoreLoginPassword,
-      );
+      const username = this.hrCoreLoginUsername.trim();
+      const password = this.hrCoreLoginPassword.trim();
+      if (!username || !password) {
+        this.hrCoreError = "username/password required";
+        return;
+      }
+      const res = await hrCoreLogin(this.hrCoreSettings, username, password);
       this.setHrCoreSettings({ ...this.hrCoreSettings, token: res.token, user: res.user });
       this.hrCoreLoginPassword = "";
     } catch (err) {
