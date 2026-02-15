@@ -21,6 +21,9 @@ function normalizeBase(input: string): string {
 export default defineConfig(() => {
   const envBase = process.env.OPENCLAW_CONTROL_UI_BASE_PATH?.trim();
   const base = envBase ? normalizeBase(envBase) : "./";
+  const envPortRaw = process.env.OPENCLAW_CONTROL_UI_PORT?.trim() || process.env.PORT?.trim();
+  const port = envPortRaw ? Number(envPortRaw) : 5173;
+  const resolvedPort = Number.isFinite(port) && port > 0 ? port : 5173;
   return {
     base,
     publicDir: path.resolve(here, "public"),
@@ -34,7 +37,7 @@ export default defineConfig(() => {
     },
     server: {
       host: true,
-      port: 5173,
+      port: resolvedPort,
       strictPort: true,
     },
   };
