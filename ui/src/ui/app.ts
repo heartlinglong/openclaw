@@ -30,6 +30,25 @@ import type {
 } from "./types.ts";
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 import {
+  loadHrCoreSettings,
+  saveHrCoreSettings,
+  type HrCoreSettings,
+} from "./agenthr/hr-core-storage.ts";
+import {
+  hrCoreGetEmployee,
+  hrCoreGetLegalEntity,
+  hrCoreGetOrgUnit,
+  hrCoreGetPosition,
+  hrCoreListOrgUnits,
+  hrCoreLogin,
+  hrCoreSearch,
+  type HrCoreEmployee,
+  type HrCoreLegalEntity,
+  type HrCoreOrgUnit,
+  type HrCorePosition,
+  type HrCoreSearchResult,
+} from "./agenthr/hr-core.ts";
+import {
   handleChannelConfigReload as handleChannelConfigReloadInternal,
   handleChannelConfigSave as handleChannelConfigSaveInternal,
   handleNostrProfileCancel as handleNostrProfileCancelInternal,
@@ -228,6 +247,27 @@ export class OpenClawApp extends LitElement {
     "models";
   @state() chatSettingsMenuOpen = false;
 
+  // AgentHR directory panel (HR Core DB-backed lookup)
+  @state() actionPanelTab: "context" | "directory" | "activity" = "directory";
+  @state() hrCoreSettings: HrCoreSettings = loadHrCoreSettings();
+  @state() hrCoreLoginUsername = "hr001";
+  @state() hrCoreLoginPassword = "";
+  @state() hrCoreLoginBusy = false;
+  @state() hrCoreError: string | null = null;
+  @state() hrCoreQuery = "";
+  @state() hrCoreSearching = false;
+  @state() hrCoreSearchResult: HrCoreSearchResult | null = null;
+  @state() hrCoreSelected:
+    | { kind: "employee"; empNo: string; data: HrCoreEmployee | null }
+    | { kind: "orgUnit"; code: string; data: HrCoreOrgUnit | null }
+    | { kind: "position"; code: string; data: HrCorePosition | null }
+    | { kind: "legalEntity"; code: string; data: HrCoreLegalEntity | null }
+    | null = null;
+  @state() hrCoreOrgUnitsLoading = false;
+  @state() hrCoreOrgUnits: HrCoreOrgUnit[] = [];
+  @state() hrCoreOrgExpanded: Record<string, boolean> = { ROOT: true };
+  private hrCoreSearchTimer: number | null = null;
+
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;
   @state() sessionsError: string | null = null;
@@ -323,6 +363,141 @@ export class OpenClawApp extends LitElement {
 
   connect() {
     connectGatewayInternal(this as unknown as Parameters<typeof connectGatewayInternal>[0]);
+  }
+
+  setHrCoreSettings(next: HrCoreSettings) {
+    this.hrCoreSettings = next;
+    saveHrCoreSettings(next);
+  }
+
+  async hrCoreLogin() {
+    this.hrCoreError = null;
+    this.hrCoreLoginBusy = true;
+    try {
+      const res = await hrCoreLogin(
+        this.hrCoreSettings,
+        this.hrCoreLoginUsername.trim(),
+        this.hrCoreLoginPassword,
+      );
+      this.setHrCoreSettings({ ...this.hrCoreSettings, token: res.token });
+      this.hrCoreLoginPassword = "";
+    } catch (err) {
+      this.hrCoreError = String(err);
+    } finally {
+      this.hrCoreLoginBusy = false;
+    }
+  }
+
+  hrCoreLogout() {
+    this.hrCoreError = null;
+    this.setHrCoreSettings({ ...this.hrCoreSettings, token: "" });
+    this.hrCoreSearchResult = null;
+    this.hrCoreSelected = null;
+  }
+
+  setHrCoreQuery(next: string) {
+    this.hrCoreQuery = next;
+    this.hrCoreError = null;
+    if (this.hrCoreSearchTimer != null) {
+      window.clearTimeout(this.hrCoreSearchTimer);
+      this.hrCoreSearchTimer = null;
+    }
+    const q = next.trim();
+    if (!q) {
+      this.hrCoreSearching = false;
+      this.hrCoreSearchResult = null;
+      return;
+    }
+    this.hrCoreSearching = true;
+    this.hrCoreSearchTimer = window.setTimeout(() => {
+      this.hrCoreSearchTimer = null;
+      void this.hrCoreRunSearch(q);
+    }, 250);
+  }
+
+  private async hrCoreRunSearch(q: string) {
+    if (!this.hrCoreSettings.token.trim()) {
+      this.hrCoreSearching = false;
+      this.hrCoreSearchResult = null;
+      return;
+    }
+    this.hrCoreSearching = true;
+    try {
+      const res = await hrCoreSearch(this.hrCoreSettings, q, 12);
+      // Ignore stale results if the user kept typing.
+      if (this.hrCoreQuery.trim() !== q) {
+        return;
+      }
+      this.hrCoreSearchResult = res;
+    } catch (err) {
+      this.hrCoreError = String(err);
+    } finally {
+      if (this.hrCoreQuery.trim() === q) {
+        this.hrCoreSearching = false;
+      }
+    }
+  }
+
+  async loadHrOrgUnits() {
+    if (!this.hrCoreSettings.token.trim()) {
+      this.hrCoreError = "HR Core token missing; login first.";
+      return;
+    }
+    if (this.hrCoreOrgUnitsLoading) {
+      return;
+    }
+    this.hrCoreOrgUnitsLoading = true;
+    this.hrCoreError = null;
+    try {
+      this.hrCoreOrgUnits = await hrCoreListOrgUnits(this.hrCoreSettings);
+      // Ensure we have at least one open root for usability.
+      if (!("ROOT" in this.hrCoreOrgExpanded)) {
+        this.hrCoreOrgExpanded = { ...this.hrCoreOrgExpanded, ROOT: true };
+      }
+    } catch (err) {
+      this.hrCoreError = String(err);
+    } finally {
+      this.hrCoreOrgUnitsLoading = false;
+    }
+  }
+
+  toggleHrOrgExpanded(code: string) {
+    const key = code.trim();
+    if (!key) return;
+    const current = Boolean(this.hrCoreOrgExpanded[key]);
+    this.hrCoreOrgExpanded = { ...this.hrCoreOrgExpanded, [key]: !current };
+  }
+
+  async selectHrCoreHit(hit: {
+    kind: "employee" | "orgUnit" | "position" | "legalEntity";
+    key: string;
+  }) {
+    if (!this.hrCoreSettings.token.trim()) {
+      this.hrCoreError = "HR Core token missing; login first.";
+      return;
+    }
+    this.hrCoreError = null;
+    try {
+      if (hit.kind === "employee") {
+        const data = await hrCoreGetEmployee(this.hrCoreSettings, hit.key);
+        this.hrCoreSelected = { kind: "employee", empNo: hit.key, data };
+        return;
+      }
+      if (hit.kind === "orgUnit") {
+        const data = await hrCoreGetOrgUnit(this.hrCoreSettings, hit.key);
+        this.hrCoreSelected = { kind: "orgUnit", code: hit.key, data };
+        return;
+      }
+      if (hit.kind === "position") {
+        const data = await hrCoreGetPosition(this.hrCoreSettings, hit.key);
+        this.hrCoreSelected = { kind: "position", code: hit.key, data };
+        return;
+      }
+      const data = await hrCoreGetLegalEntity(this.hrCoreSettings, hit.key);
+      this.hrCoreSelected = { kind: "legalEntity", code: hit.key, data };
+    } catch (err) {
+      this.hrCoreError = String(err);
+    }
   }
 
   newThread() {

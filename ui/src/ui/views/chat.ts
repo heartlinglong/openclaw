@@ -1,6 +1,14 @@
 import { html, nothing } from "lit";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
+import type { HrCoreSettings } from "../agenthr/hr-core-storage.ts";
+import type {
+  HrCoreEmployee,
+  HrCoreLegalEntity,
+  HrCoreOrgUnit,
+  HrCorePosition,
+  HrCoreSearchResult,
+} from "../agenthr/hr-core.ts";
 import type { SessionsListResult } from "../types.ts";
 import type { GatewaySessionRow } from "../types.ts";
 import type { ChatItem, MessageGroup } from "../types/chat-types.ts";
@@ -11,9 +19,9 @@ import {
   renderStreamingGroup,
 } from "../chat/grouped-render.ts";
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer.ts";
+import "../components/resizable-divider.ts";
 import { icons } from "../icons.ts";
 import { renderMarkdownSidebar } from "./markdown-sidebar.ts";
-import "../components/resizable-divider.ts";
 
 export type CompactionIndicatorStatus = {
   active: boolean;
@@ -58,6 +66,39 @@ export type ChatProps = {
     section: "gateway" | "models" | "skills" | "cron" | "memory" | "channels",
   ) => void;
   onNavigateToTab?: (tab: "channels" | "cron" | "skills" | "agents" | "config") => void;
+  // Right action panel
+  actionPanelTab: "context" | "directory" | "activity";
+  onActionPanelTabChange: (tab: "context" | "directory" | "activity") => void;
+  // HR Core directory (DB-backed; not memory)
+  hrCoreSettings: HrCoreSettings;
+  hrCoreLoginUsername: string;
+  hrCoreLoginPassword: string;
+  hrCoreLoginBusy: boolean;
+  hrCoreError: string | null;
+  hrCoreQuery: string;
+  hrCoreSearching: boolean;
+  hrCoreSearchResult: HrCoreSearchResult | null;
+  hrCoreSelected:
+    | { kind: "employee"; empNo: string; data: HrCoreEmployee | null }
+    | { kind: "orgUnit"; code: string; data: HrCoreOrgUnit | null }
+    | { kind: "position"; code: string; data: HrCorePosition | null }
+    | { kind: "legalEntity"; code: string; data: HrCoreLegalEntity | null }
+    | null;
+  hrCoreOrgUnitsLoading: boolean;
+  hrCoreOrgUnits: HrCoreOrgUnit[];
+  hrCoreOrgExpanded: Record<string, boolean>;
+  onHrCoreSettingsChange: (next: HrCoreSettings) => void;
+  onHrCoreLoginUsernameChange: (next: string) => void;
+  onHrCoreLoginPasswordChange: (next: string) => void;
+  onHrCoreLogin: () => void;
+  onHrCoreLogout: () => void;
+  onHrCoreQueryChange: (next: string) => void;
+  onHrOrgUnitsLoad: () => void;
+  onHrOrgExpandedToggle: (code: string) => void;
+  onHrCoreHitSelect: (hit: {
+    kind: "employee" | "orgUnit" | "position" | "legalEntity";
+    key: string;
+  }) => void;
   // Image attachments
   attachments?: ChatAttachment[];
   onAttachmentsChange?: (attachments: ChatAttachment[]) => void;
@@ -190,6 +231,362 @@ function renderAttachmentPreview(props: ChatProps) {
         `,
       )}
     </div>
+  `;
+}
+
+function renderKv(label: string, value: unknown) {
+  const text = value == null ? "" : String(value);
+  return html`
+    <div class="ahr-kv">
+      <div class="ahr-kv__k">${label}</div>
+      <div class="ahr-kv__v mono">${text || "-"}</div>
+    </div>
+  `;
+}
+
+function renderDirectory(props: ChatProps) {
+  const token = props.hrCoreSettings.token.trim();
+  const baseUrl = props.hrCoreSettings.baseUrl.trim();
+  const q = props.hrCoreQuery;
+  const res = props.hrCoreSearchResult;
+
+  const loginCard = html`
+    <div class="ahr-card">
+      <div class="ahr-card__title">HR Core 登录</div>
+      <div class="muted ahr-card__sub">
+        右侧搜索与组织树的数据来自 HR Core 数据库，不读取 memory 文档。
+      </div>
+      <div class="form-grid" style="margin-top: 12px;">
+        <label class="field">
+          <span>HR Core Base URL</span>
+          <input
+            class="mono"
+            .value=${baseUrl}
+            placeholder="http://127.0.0.1:3001"
+            @input=${(e: Event) => {
+              const v = (e.target as HTMLInputElement).value;
+              props.onHrCoreSettingsChange({ ...props.hrCoreSettings, baseUrl: v });
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>Token (JWT)</span>
+          <input
+            type="password"
+            class="mono"
+            .value=${props.hrCoreSettings.token}
+            placeholder="paste token"
+            @input=${(e: Event) => {
+              const v = (e.target as HTMLInputElement).value;
+              props.onHrCoreSettingsChange({ ...props.hrCoreSettings, token: v });
+            }}
+          />
+        </label>
+        <div class="muted" style="grid-column: 1 / -1;">
+          或者用账号密码登录（dev seed 默认: <span class="mono">hr001 / hr123456</span>）。
+        </div>
+        <label class="field">
+          <span>Username</span>
+          <input
+            class="mono"
+            .value=${props.hrCoreLoginUsername}
+            placeholder="hr001"
+            @input=${(e: Event) =>
+              props.onHrCoreLoginUsernameChange((e.target as HTMLInputElement).value)}
+          />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input
+            type="password"
+            class="mono"
+            .value=${props.hrCoreLoginPassword}
+            placeholder="hr123456"
+            @input=${(e: Event) =>
+              props.onHrCoreLoginPasswordChange((e.target as HTMLInputElement).value)}
+          />
+        </label>
+      </div>
+      <div class="row" style="margin-top: 12px;">
+        <button class="btn primary" ?disabled=${props.hrCoreLoginBusy} @click=${props.onHrCoreLogin}>
+          ${props.hrCoreLoginBusy ? icons.loader : icons.zap} Login
+        </button>
+        <button class="btn" ?disabled=${!props.hrCoreSettings.token.trim()} @click=${props.onHrCoreLogout}>
+          ${icons.x} Clear token
+        </button>
+      </div>
+    </div>
+  `;
+
+  const searchBox = html`
+    <div class="ahr-searchbox">
+      <span class="ahr-searchbox__icon">${icons.search}</span>
+      <input
+        class="ahr-searchbox__input"
+        .value=${q}
+        placeholder="搜索 法人/组织/岗位/员工档案…"
+        ?disabled=${!token}
+        @input=${(e: Event) => props.onHrCoreQueryChange((e.target as HTMLInputElement).value)}
+      />
+      ${
+        props.hrCoreSearching
+          ? html`<span class="ahr-searchbox__spin">${icons.loader}</span>`
+          : nothing
+      }
+    </div>
+  `;
+
+  const results = res
+    ? html`
+        <div class="ahr-dir-results">
+          ${
+            res.legal_entities.length
+              ? html`
+                <div class="ahr-dir-group">
+                  <div class="ahr-dir-group__title">法人</div>
+                  ${res.legal_entities.map(
+                    (le) => html`
+                      <button
+                        class="ahr-dir-item"
+                        type="button"
+                        @click=${() => props.onHrCoreHitSelect({ kind: "legalEntity", key: le.code })}
+                      >
+                        <div class="ahr-dir-item__title">${le.name}</div>
+                        <div class="ahr-dir-item__sub mono">${le.code} · ${le.country}</div>
+                      </button>
+                    `,
+                  )}
+                </div>
+              `
+              : nothing
+          }
+
+          ${
+            res.org_units.length
+              ? html`
+                <div class="ahr-dir-group">
+                  <div class="ahr-dir-group__title">组织</div>
+                  ${res.org_units.map(
+                    (o) => html`
+                      <button
+                        class="ahr-dir-item"
+                        type="button"
+                        @click=${() => props.onHrCoreHitSelect({ kind: "orgUnit", key: o.code })}
+                      >
+                        <div class="ahr-dir-item__title">${o.name}</div>
+                        <div class="ahr-dir-item__sub mono">${o.code} · ${o.type}</div>
+                      </button>
+                    `,
+                  )}
+                </div>
+              `
+              : nothing
+          }
+
+          ${
+            res.positions.length
+              ? html`
+                <div class="ahr-dir-group">
+                  <div class="ahr-dir-group__title">岗位</div>
+                  ${res.positions.map(
+                    (p) => html`
+                      <button
+                        class="ahr-dir-item"
+                        type="button"
+                        @click=${() => props.onHrCoreHitSelect({ kind: "position", key: p.code })}
+                      >
+                        <div class="ahr-dir-item__title">${p.name}</div>
+                        <div class="ahr-dir-item__sub mono">${p.code} · ${p.org_unit.code}</div>
+                      </button>
+                    `,
+                  )}
+                </div>
+              `
+              : nothing
+          }
+
+          ${
+            res.employees.length
+              ? html`
+                <div class="ahr-dir-group">
+                  <div class="ahr-dir-group__title">人员</div>
+                  ${res.employees.map(
+                    (e) => html`
+                      <button
+                        class="ahr-dir-item"
+                        type="button"
+                        @click=${() => props.onHrCoreHitSelect({ kind: "employee", key: e.emp_no })}
+                      >
+                        <div class="ahr-dir-item__title">${e.legal_name ?? "(未填写姓名)"}</div>
+                        <div class="ahr-dir-item__sub mono">
+                          ${e.emp_no}${e.org_unit ? ` · ${e.org_unit.code}` : ""}
+                        </div>
+                      </button>
+                    `,
+                  )}
+                </div>
+              `
+              : nothing
+          }
+        </div>
+      `
+    : nothing;
+
+  const selected = (() => {
+    const sel = props.hrCoreSelected;
+    if (!sel || !sel.data) return nothing;
+    if (sel.kind === "employee") {
+      const e = sel.data;
+      return html`
+        <div class="ahr-card">
+          <div class="ahr-card__title">员工档案</div>
+          <div class="ahr-card__sub mono">${e.emp_no}</div>
+          <div class="ahr-kvgrid">
+            ${renderKv("legal_name", e.profile?.legal_name ?? null)}
+            ${renderKv("primary_phone", e.profile?.primary_phone ?? null)}
+            ${renderKv("primary_email", e.profile?.primary_email ?? null)}
+            ${renderKv("legal_entity", e.employment?.legal_entity?.code ?? null)}
+            ${renderKv("org_unit", e.job_info?.org_unit?.code ?? null)}
+            ${renderKv("position", e.job_info?.position?.code ?? null)}
+            ${renderKv("manager", e.job_info?.manager_user?.username ?? null)}
+          </div>
+        </div>
+      `;
+    }
+    if (sel.kind === "orgUnit") {
+      const o = sel.data;
+      return html`
+        <div class="ahr-card">
+          <div class="ahr-card__title">组织详情</div>
+          <div class="ahr-card__sub mono">${o.code}</div>
+          <div class="ahr-kvgrid">
+            ${renderKv("code", o.code)}
+            ${renderKv("name", o.name)}
+            ${renderKv("type", o.type)}
+            ${renderKv("parentCode", o.parentCode)}
+          </div>
+        </div>
+      `;
+    }
+    if (sel.kind === "position") {
+      const p = sel.data;
+      return html`
+        <div class="ahr-card">
+          <div class="ahr-card__title">岗位详情</div>
+          <div class="ahr-card__sub mono">${p.code}</div>
+          <div class="ahr-kvgrid">
+            ${renderKv("code", p.code)}
+            ${renderKv("name", p.name)}
+            ${renderKv("org_unit", p.org_unit?.code ?? null)}
+            ${renderKv("status", p.status)}
+          </div>
+        </div>
+      `;
+    }
+    const le = sel.data;
+    return html`
+      <div class="ahr-card">
+        <div class="ahr-card__title">法人详情</div>
+        <div class="ahr-card__sub mono">${le.code}</div>
+        <div class="ahr-kvgrid">
+          ${renderKv("code", le.code)}
+          ${renderKv("name", le.name)}
+          ${renderKv("country", le.country)}
+          ${renderKv("status", le.status)}
+        </div>
+      </div>
+    `;
+  })();
+
+  const orgTree = (() => {
+    if (!token) return nothing;
+    const nodes = props.hrCoreOrgUnits;
+    if (nodes.length === 0) {
+      return html`
+        <div class="ahr-card">
+          <div class="ahr-card__title">组织树</div>
+          <div class="muted ahr-card__sub">点击加载组织数据后可展开/折叠。</div>
+          <button class="btn" ?disabled=${props.hrCoreOrgUnitsLoading} @click=${props.onHrOrgUnitsLoad}>
+            ${props.hrCoreOrgUnitsLoading ? icons.loader : icons.link} Load org units
+          </button>
+        </div>
+      `;
+    }
+
+    const byParent = new Map<string | null, HrCoreOrgUnit[]>();
+    for (const row of nodes) {
+      const parent = row.parentCode ?? null;
+      const list = byParent.get(parent) ?? [];
+      list.push(row);
+      byParent.set(parent, list);
+    }
+    for (const [k, list] of byParent.entries()) {
+      list.sort((a, b) => a.code.localeCompare(b.code));
+      byParent.set(k, list);
+    }
+
+    const renderNode = (row: HrCoreOrgUnit, depth: number) => {
+      const children = byParent.get(row.code) ?? [];
+      const hasChildren = children.length > 0;
+      const expanded = Boolean(props.hrCoreOrgExpanded[row.code]);
+      return html`
+        <div class="ahr-tree__row" style=${`padding-left: ${8 + depth * 14}px`}>
+          <button
+            class="ahr-tree__toggle"
+            type="button"
+            ?disabled=${!hasChildren}
+            @click=${() => props.onHrOrgExpandedToggle(row.code)}
+          >
+            ${hasChildren ? (expanded ? "▾" : "▸") : "·"}
+          </button>
+          <button
+            class="ahr-tree__item"
+            type="button"
+            @click=${() => props.onHrCoreHitSelect({ kind: "orgUnit", key: row.code })}
+          >
+            <span class="mono">${row.code}</span>
+            <span class="ahr-tree__name">${row.name}</span>
+          </button>
+        </div>
+        ${hasChildren && expanded ? children.map((c) => renderNode(c, depth + 1)) : nothing}
+      `;
+    };
+
+    const roots = byParent.get(null) ?? [];
+    return html`
+      <div class="ahr-card">
+        <div class="ahr-card__title">组织树</div>
+        <div class="muted ahr-card__sub">点击组织查看字段；展开/折叠子组织。</div>
+        <div class="ahr-tree">
+          ${roots.map((r) => renderNode(r, 0))}
+        </div>
+      </div>
+    `;
+  })();
+
+  return html`
+    ${
+      token
+        ? html`
+      <div class="ahr-dir-top">
+        ${searchBox}
+        <div class="ahr-dir-meta">
+          <span class="ahr-badge">DB</span>
+          <span class="mono">${baseUrl}</span>
+          <button class="btn btn--sm btn--icon" type="button" @click=${props.onHrCoreLogout} title="Logout">
+            ${icons.x}
+          </button>
+        </div>
+      </div>
+    `
+        : nothing
+    }
+
+    ${props.hrCoreError ? html`<div class="callout danger">${props.hrCoreError}</div>` : nothing}
+    ${token ? nothing : loginCard}
+    ${token ? results : nothing}
+    ${token ? selected : nothing}
+    ${token ? orgTree : nothing}
   `;
 }
 
@@ -470,25 +867,49 @@ export function renderChat(props: ChatProps) {
 
       <div class="ahr-panel ahr-action">
         <div class="ahr-action__tabs">
-          <button class="ahr-tab active" type="button">Context</button>
-          <button class="ahr-tab" type="button" @click=${() => navigateTab("agents")}>Employees</button>
-          <button class="ahr-tab" type="button" @click=${() => navigateTab("cron")}>Activity</button>
+          <button
+            class="ahr-tab ${props.actionPanelTab === "context" ? "active" : ""}"
+            type="button"
+            @click=${() => props.onActionPanelTabChange("context")}
+          >
+            Context
+          </button>
+          <button
+            class="ahr-tab ${props.actionPanelTab === "directory" ? "active" : ""}"
+            type="button"
+            @click=${() => props.onActionPanelTabChange("directory")}
+          >
+            Directory
+          </button>
+          <button
+            class="ahr-tab ${props.actionPanelTab === "activity" ? "active" : ""}"
+            type="button"
+            @click=${() => props.onActionPanelTabChange("activity")}
+          >
+            Activity
+          </button>
         </div>
         <div class="ahr-action__body">
           ${
-            sidebarOpen
-              ? renderMarkdownSidebar({
-                  content: props.sidebarContent ?? null,
-                  error: props.sidebarError ?? null,
-                  onClose: props.onCloseSidebar!,
-                  onViewRawText: () => {
-                    if (!props.sidebarContent || !props.onOpenSidebar) return;
-                    props.onOpenSidebar(`\`\`\`\n${props.sidebarContent}\n\`\`\``);
-                  },
-                })
-              : html`
-                  <div class="muted">Tool output will appear here.</div>
-                `
+            props.actionPanelTab === "directory"
+              ? renderDirectory(props)
+              : props.actionPanelTab === "activity"
+                ? html`
+                    <div class="muted">Activity (WIP)</div>
+                  `
+                : sidebarOpen
+                  ? renderMarkdownSidebar({
+                      content: props.sidebarContent ?? null,
+                      error: props.sidebarError ?? null,
+                      onClose: props.onCloseSidebar!,
+                      onViewRawText: () => {
+                        if (!props.sidebarContent || !props.onOpenSidebar) return;
+                        props.onOpenSidebar(`\`\`\`\n${props.sidebarContent}\n\`\`\``);
+                      },
+                    })
+                  : html`
+                      <div class="muted">Tool output will appear here.</div>
+                    `
           }
         </div>
       </div>

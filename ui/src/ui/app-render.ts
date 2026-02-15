@@ -980,6 +980,36 @@ export function renderApp(state: AppViewState) {
                   }
                   state.setTab(tab);
                 },
+                actionPanelTab: (state as unknown as OpenClawApp).actionPanelTab,
+                onActionPanelTabChange: (tab) =>
+                  ((state as unknown as OpenClawApp).actionPanelTab = tab),
+                hrCoreSettings: (state as unknown as OpenClawApp).hrCoreSettings,
+                hrCoreLoginUsername: (state as unknown as OpenClawApp).hrCoreLoginUsername,
+                hrCoreLoginPassword: (state as unknown as OpenClawApp).hrCoreLoginPassword,
+                hrCoreLoginBusy: (state as unknown as OpenClawApp).hrCoreLoginBusy,
+                hrCoreError: (state as unknown as OpenClawApp).hrCoreError,
+                hrCoreQuery: (state as unknown as OpenClawApp).hrCoreQuery,
+                hrCoreSearching: (state as unknown as OpenClawApp).hrCoreSearching,
+                hrCoreSearchResult: (state as unknown as OpenClawApp).hrCoreSearchResult,
+                hrCoreSelected: (state as unknown as OpenClawApp).hrCoreSelected,
+                hrCoreOrgUnitsLoading: (state as unknown as OpenClawApp).hrCoreOrgUnitsLoading,
+                hrCoreOrgUnits: (state as unknown as OpenClawApp).hrCoreOrgUnits,
+                hrCoreOrgExpanded: (state as unknown as OpenClawApp).hrCoreOrgExpanded,
+                onHrCoreSettingsChange: (next) =>
+                  (state as unknown as OpenClawApp).setHrCoreSettings(next),
+                onHrCoreLoginUsernameChange: (next) =>
+                  ((state as unknown as OpenClawApp).hrCoreLoginUsername = next),
+                onHrCoreLoginPasswordChange: (next) =>
+                  ((state as unknown as OpenClawApp).hrCoreLoginPassword = next),
+                onHrCoreLogin: () => void (state as unknown as OpenClawApp).hrCoreLogin(),
+                onHrCoreLogout: () => (state as unknown as OpenClawApp).hrCoreLogout(),
+                onHrCoreQueryChange: (next) =>
+                  (state as unknown as OpenClawApp).setHrCoreQuery(next),
+                onHrOrgUnitsLoad: () => void (state as unknown as OpenClawApp).loadHrOrgUnits(),
+                onHrOrgExpandedToggle: (code) =>
+                  (state as unknown as OpenClawApp).toggleHrOrgExpanded(code),
+                onHrCoreHitSelect: (hit) =>
+                  void (state as unknown as OpenClawApp).selectHrCoreHit(hit),
               })
             : nothing
         }
