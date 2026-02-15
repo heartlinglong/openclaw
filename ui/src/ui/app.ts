@@ -79,7 +79,6 @@ import {
 } from "./app-tool-stream.ts";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
-import { loadChatHistory as loadChatHistoryInternal } from "./controllers/chat.ts";
 import { loadSessions as loadSessionsInternal } from "./controllers/sessions.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
@@ -329,7 +328,25 @@ export class OpenClawApp extends LitElement {
   newThread() {
     // "New thread" means switching to a fresh session key, not sending "/new" into the chat.
     const uuid = generateUUID().split("-")[0] ?? "new";
-    const next = `thread-${Date.now().toString(36)}-${uuid}`;
+    const rest = `thread-${Date.now().toString(36)}-${uuid}`;
+    const next = (() => {
+      // Prefer preserving agent-scoped session keys (agent:<agentId>:<rest>) so that
+      // gateway events + chat.history/session.list all use the same key.
+      const current = (this.sessionKey ?? "").trim();
+      if (current.startsWith("agent:")) {
+        const parts = current.split(":");
+        const agentId = (parts[1] ?? "").trim();
+        if (agentId) {
+          return `agent:${agentId}:${rest}`;
+        }
+      }
+      const snapshot = this.hello?.snapshot as any;
+      const agentId = (snapshot?.sessionDefaults?.defaultAgentId ?? "").toString().trim();
+      if (agentId) {
+        return `agent:${agentId}:${rest}`;
+      }
+      return rest;
+    })();
     this.sessionKey = next;
     this.chatMessage = "";
     this.chatAttachments = [];
@@ -348,7 +365,6 @@ export class OpenClawApp extends LitElement {
     });
     void this.loadAssistantIdentity();
     if (this.connected) {
-      void loadChatHistoryInternal(this);
       void refreshChatAvatarInternal(this);
       void loadSessionsInternal(this, { activeMinutes: CHAT_SESSIONS_ACTIVE_MINUTES });
     }

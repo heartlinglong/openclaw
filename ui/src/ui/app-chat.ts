@@ -6,7 +6,7 @@ import { scheduleChatScroll } from "./app-scroll.ts";
 import { setLastActiveSessionKey } from "./app-settings.ts";
 import { resetToolStream } from "./app-tool-stream.ts";
 import { abortChatRun, loadChatHistory, sendChatMessage } from "./controllers/chat.ts";
-import { loadSessions } from "./controllers/sessions.ts";
+import { loadSessions, patchSession } from "./controllers/sessions.ts";
 import { normalizeBasePath } from "./navigation.ts";
 import { generateUUID } from "./uuid.ts";
 
@@ -117,6 +117,7 @@ async function sendChatMessageNow(
       host as unknown as Parameters<typeof setLastActiveSessionKey>[0],
       host.sessionKey,
     );
+    void maybeAutoLabelSession(host as unknown as OpenClawApp, message);
   }
   if (ok && opts?.restoreDraft && opts.previousDraft?.trim()) {
     host.chatMessage = opts.previousDraft;
@@ -132,6 +133,29 @@ async function sendChatMessageNow(
     host.refreshSessionsAfterChat.add(runId);
   }
   return ok;
+}
+
+async function maybeAutoLabelSession(state: OpenClawApp, message: string) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  const key = (state.sessionKey ?? "").trim();
+  if (!key) {
+    return;
+  }
+  const existing = state.sessionsResult?.sessions?.find((row) => row.key === key);
+  const alreadyLabeled = Boolean(
+    (existing?.label ?? "").trim() || (existing?.displayName ?? "").trim(),
+  );
+  if (alreadyLabeled) {
+    return;
+  }
+  const title = message.split("\n")[0]?.trim().replace(/\s+/g, " ");
+  const normalized = title ? (title.length > 28 ? `${title.slice(0, 28)}…` : title) : null;
+  if (!normalized) {
+    return;
+  }
+  await patchSession(state, key, { label: normalized });
 }
 
 async function flushChatQueue(host: ChatHost) {
