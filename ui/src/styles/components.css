@@ -1215,11 +1215,15 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  /* Make chat-thread stretch so its internal overflow-y:auto can scroll. */
+  display: flex;
+  flex-direction: column;
 }
 
 .ahr-chat__messages .chat-thread {
   margin-top: 0;
   padding: 16px;
+  flex: 1;
 }
 
 .ahr-chat__compose {
