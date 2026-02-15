@@ -991,6 +991,7 @@ export function renderApp(state: AppViewState) {
                 hrCoreQuery: (state as unknown as OpenClawApp).hrCoreQuery,
                 hrCoreSearching: (state as unknown as OpenClawApp).hrCoreSearching,
                 hrCoreSearchResult: (state as unknown as OpenClawApp).hrCoreSearchResult,
+                hrCoreSearchNotice: (state as unknown as OpenClawApp).hrCoreSearchNotice,
                 hrCoreSelected: (state as unknown as OpenClawApp).hrCoreSelected,
                 hrCoreOrgUnitsLoading: (state as unknown as OpenClawApp).hrCoreOrgUnitsLoading,
                 hrCoreOrgUnits: (state as unknown as OpenClawApp).hrCoreOrgUnits,

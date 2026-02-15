@@ -39,7 +39,11 @@ import {
   hrCoreGetLegalEntity,
   hrCoreGetOrgUnit,
   hrCoreGetPosition,
+  HrCoreHttpError,
+  hrCoreListEmployees,
+  hrCoreListLegalEntities,
   hrCoreListOrgUnits,
+  hrCoreListPositions,
   hrCoreLogin,
   hrCoreSearch,
   type HrCoreEmployee,
@@ -272,6 +276,9 @@ export class OpenClawApp extends LitElement {
   @state() hrCoreOrgUnitsLoading = false;
   @state() hrCoreOrgUnits: HrCoreOrgUnit[] = [];
   @state() hrCoreOrgExpanded: Record<string, boolean> = { ROOT: true };
+  @state() hrCorePositions: HrCorePosition[] = [];
+  @state() hrCoreLegalEntities: HrCoreLegalEntity[] = [];
+  @state() hrCoreSearchNotice: string | null = null;
   private hrCoreSearchTimer: number | null = null;
 
   @state() sessionsLoading = false;
@@ -437,6 +444,7 @@ export class OpenClawApp extends LitElement {
       return;
     }
     this.hrCoreSearching = true;
+    this.hrCoreSearchNotice = null;
     try {
       const res = await hrCoreSearch(this.hrCoreSettings, q, 12);
       // Ignore stale results if the user kept typing.
@@ -445,12 +453,108 @@ export class OpenClawApp extends LitElement {
       }
       this.hrCoreSearchResult = res;
     } catch (err) {
-      this.hrCoreError = String(err);
+      // Some older hr-core builds might not ship /api/v1/search yet. Fall back to list endpoints.
+      if (
+        err instanceof HrCoreHttpError &&
+        err.status === 404 &&
+        err.path.startsWith("/api/v1/search")
+      ) {
+        try {
+          const res = await this.hrCoreFallbackSearch(q);
+          if (this.hrCoreQuery.trim() !== q) {
+            return;
+          }
+          this.hrCoreSearchNotice = "Search API unavailable; using fallback list filtering.";
+          this.hrCoreSearchResult = res;
+          this.hrCoreError = null;
+          return;
+        } catch (inner) {
+          this.hrCoreError = String(inner);
+        }
+      } else {
+        this.hrCoreError = String(err);
+      }
     } finally {
       if (this.hrCoreQuery.trim() === q) {
         this.hrCoreSearching = false;
       }
     }
+  }
+
+  private async ensureHrCoreStaticListsLoaded() {
+    if (!this.hrCoreSettings.token.trim()) {
+      throw new Error("HR Core token missing; login first.");
+    }
+    const needsOrgUnits = this.hrCoreOrgUnits.length === 0;
+    const needsPositions = this.hrCorePositions.length === 0;
+    const needsLegalEntities = this.hrCoreLegalEntities.length === 0;
+    if (!needsOrgUnits && !needsPositions && !needsLegalEntities) {
+      return;
+    }
+    const [orgUnits, positions, legalEntities] = await Promise.all([
+      needsOrgUnits
+        ? hrCoreListOrgUnits(this.hrCoreSettings)
+        : Promise.resolve(this.hrCoreOrgUnits),
+      needsPositions
+        ? hrCoreListPositions(this.hrCoreSettings)
+        : Promise.resolve(this.hrCorePositions),
+      needsLegalEntities
+        ? hrCoreListLegalEntities(this.hrCoreSettings)
+        : Promise.resolve(this.hrCoreLegalEntities),
+    ]);
+    if (needsOrgUnits) {
+      this.hrCoreOrgUnits = orgUnits;
+    }
+    if (needsPositions) {
+      this.hrCorePositions = positions;
+    }
+    if (needsLegalEntities) {
+      this.hrCoreLegalEntities = legalEntities;
+    }
+  }
+
+  private async hrCoreFallbackSearch(q: string): Promise<HrCoreSearchResult> {
+    await this.ensureHrCoreStaticListsLoaded();
+
+    const needleRaw = q.trim();
+    const needle = needleRaw.toLowerCase();
+    const matches = (...values: Array<string | null | undefined>) => {
+      for (const v of values) {
+        if (!v) continue;
+        const s = String(v);
+        if (s.toLowerCase().includes(needle)) return true;
+      }
+      return false;
+    };
+
+    const employees = await hrCoreListEmployees(this.hrCoreSettings, needleRaw, 12);
+
+    const legal_entities = this.hrCoreLegalEntities
+      .filter((le) => matches(le.code, le.name, le.country))
+      .slice(0, 12)
+      .map((le) => ({ code: le.code, name: le.name, country: le.country }));
+
+    const org_units = this.hrCoreOrgUnits
+      .filter((ou) => matches(ou.code, ou.name, ou.type))
+      .slice(0, 12)
+      .map((ou) => ({ code: ou.code, name: ou.name, type: ou.type }));
+
+    const positions = this.hrCorePositions
+      .filter((p) => matches(p.code, p.name, p.org_unit?.code, p.org_unit?.name))
+      .slice(0, 12)
+      .map((p) => ({ code: p.code, name: p.name, org_unit: p.org_unit }));
+
+    const employeeHits = employees.map((e) => ({
+      id: e.id,
+      emp_no: e.emp_no,
+      legal_name: e.profile?.legal_name ?? null,
+      primary_phone: e.profile?.primary_phone ?? null,
+      primary_email: e.profile?.primary_email ?? null,
+      org_unit: e.job_info?.org_unit ? { ...e.job_info.org_unit } : null,
+      position: e.job_info?.position ? { ...e.job_info.position } : null,
+    }));
+
+    return { q: needleRaw, employees: employeeHits, org_units, positions, legal_entities };
   }
 
   async loadHrOrgUnits() {

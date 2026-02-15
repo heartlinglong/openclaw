@@ -78,6 +78,7 @@ export type ChatProps = {
   hrCoreQuery: string;
   hrCoreSearching: boolean;
   hrCoreSearchResult: HrCoreSearchResult | null;
+  hrCoreSearchNotice: string | null;
   hrCoreSelected:
     | { kind: "employee"; empNo: string; data: HrCoreEmployee | null }
     | { kind: "orgUnit"; code: string; data: HrCoreOrgUnit | null }
@@ -536,6 +537,7 @@ function renderDirectory(props: ChatProps) {
         : nothing
     }
 
+    ${props.hrCoreSearchNotice ? html`<div class="callout info">${props.hrCoreSearchNotice}</div>` : nothing}
     ${props.hrCoreError ? html`<div class="callout danger">${props.hrCoreError}</div>` : nothing}
     ${token ? results : nothing}
     ${token ? selected : nothing}

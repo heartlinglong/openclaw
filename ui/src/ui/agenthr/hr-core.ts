@@ -2,6 +2,19 @@ import type { HrCoreSettings } from "./hr-core-storage.ts";
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
+export class HrCoreHttpError extends Error {
+  status: number;
+  statusText: string;
+  path: string;
+  constructor(message: string, opts: { status: number; statusText: string; path: string }) {
+    super(message);
+    this.name = "HrCoreHttpError";
+    this.status = opts.status;
+    this.statusText = opts.statusText;
+    this.path = opts.path;
+  }
+}
+
 export type HrCoreUser = {
   id: string;
   username: string;
@@ -71,6 +84,8 @@ export type HrCorePosition = {
   effective_end_date: string | null;
 };
 
+export type HrCoreEmployeeListItem = HrCoreEmployee;
+
 function joinUrl(baseUrl: string, path: string) {
   const base = baseUrl.replace(/\/+$/, "");
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -94,8 +109,9 @@ async function requestJson<T>(
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(
+    throw new HrCoreHttpError(
       `${opts.method} ${opts.path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
+      { status: res.status, statusText: res.statusText, path: opts.path },
     );
   }
   return (await res.json()) as T;
@@ -125,6 +141,33 @@ export async function hrCoreSearch(settings: HrCoreSettings, q: string, limit = 
 
 export async function hrCoreListOrgUnits(settings: HrCoreSettings) {
   return requestJson<HrCoreOrgUnit[]>(settings, { method: "GET", path: "/api/v1/org-units" });
+}
+
+export async function hrCoreListPositions(settings: HrCoreSettings, orgUnitCode?: string) {
+  const qs = orgUnitCode
+    ? `?${new URLSearchParams({ org_unit_code: orgUnitCode }).toString()}`
+    : "";
+  return requestJson<HrCorePosition[]>(settings, { method: "GET", path: `/api/v1/positions${qs}` });
+}
+
+export async function hrCoreListLegalEntities(settings: HrCoreSettings) {
+  return requestJson<HrCoreLegalEntity[]>(settings, {
+    method: "GET",
+    path: "/api/v1/legal-entities",
+  });
+}
+
+export async function hrCoreListEmployees(settings: HrCoreSettings, q?: string, limit = 50) {
+  const params = new URLSearchParams();
+  if (q && q.trim()) {
+    params.set("q", q.trim());
+  }
+  params.set("limit", String(limit));
+  const qs = params.toString();
+  return requestJson<HrCoreEmployeeListItem[]>(settings, {
+    method: "GET",
+    path: `/api/v1/employees${qs ? `?${qs}` : ""}`,
+  });
 }
 
 export async function hrCoreGetOrgUnit(settings: HrCoreSettings, code: string) {
