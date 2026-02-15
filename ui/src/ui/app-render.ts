@@ -1111,6 +1111,11 @@ export function renderApp(state: AppViewState) {
         settings: state.settings,
         password: state.password,
         lastError: state.lastError,
+        hrCoreSettings: (state as unknown as OpenClawApp).hrCoreSettings,
+        hrCoreLoginUsername: (state as unknown as OpenClawApp).hrCoreLoginUsername,
+        hrCoreLoginPassword: (state as unknown as OpenClawApp).hrCoreLoginPassword,
+        hrCoreLoginBusy: (state as unknown as OpenClawApp).hrCoreLoginBusy,
+        hrCoreError: (state as unknown as OpenClawApp).hrCoreError,
         agentId: resolvedAgentId,
         configLoaded: Boolean(configValue),
         configSaving: state.configSaving,
@@ -1134,6 +1139,13 @@ export function renderApp(state: AppViewState) {
         onSettingsChange: (next) => state.applySettings(next),
         onPasswordChange: (next) => (state.password = next),
         onConnect: () => state.connect(),
+        onHrCoreSettingsChange: (next) => (state as unknown as OpenClawApp).setHrCoreSettings(next),
+        onHrCoreLoginUsernameChange: (next) =>
+          ((state as unknown as OpenClawApp).hrCoreLoginUsername = next),
+        onHrCoreLoginPasswordChange: (next) =>
+          ((state as unknown as OpenClawApp).hrCoreLoginPassword = next),
+        onHrCoreLogin: () => void (state as unknown as OpenClawApp).hrCoreLogin(),
+        onHrCoreLogout: () => (state as unknown as OpenClawApp).hrCoreLogout(),
         onModelPrimaryChange: (modelId) => {
           if (!quickConfigValue || !resolvedAgentId) return;
           const list = (quickConfigValue as any)?.agents?.list;

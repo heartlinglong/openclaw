@@ -243,8 +243,14 @@ export class OpenClawApp extends LitElement {
 
   // Quick settings overlay (for chat focus mode / fast access)
   @state() quickSettingsOpen = false;
-  @state() quickSettingsSection: "gateway" | "models" | "skills" | "cron" | "memory" | "channels" =
-    "models";
+  @state() quickSettingsSection:
+    | "gateway"
+    | "hrcore"
+    | "models"
+    | "skills"
+    | "cron"
+    | "memory"
+    | "channels" = "models";
   @state() chatSettingsMenuOpen = false;
 
   // AgentHR directory panel (HR Core DB-backed lookup)
@@ -379,7 +385,7 @@ export class OpenClawApp extends LitElement {
         this.hrCoreLoginUsername.trim(),
         this.hrCoreLoginPassword,
       );
-      this.setHrCoreSettings({ ...this.hrCoreSettings, token: res.token });
+      this.setHrCoreSettings({ ...this.hrCoreSettings, token: res.token, user: res.user });
       this.hrCoreLoginPassword = "";
     } catch (err) {
       this.hrCoreError = String(err);
@@ -390,7 +396,7 @@ export class OpenClawApp extends LitElement {
 
   hrCoreLogout() {
     this.hrCoreError = null;
-    this.setHrCoreSettings({ ...this.hrCoreSettings, token: "" });
+    this.setHrCoreSettings({ ...this.hrCoreSettings, token: "", user: null });
     this.hrCoreSearchResult = null;
     this.hrCoreSelected = null;
   }

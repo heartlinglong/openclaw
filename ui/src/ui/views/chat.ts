@@ -63,7 +63,7 @@ export type ChatProps = {
   settingsMenuOpen?: boolean;
   onSettingsMenuOpenChange?: (open: boolean) => void;
   onOpenQuickSettings?: (
-    section: "gateway" | "models" | "skills" | "cron" | "memory" | "channels",
+    section: "gateway" | "hrcore" | "models" | "skills" | "cron" | "memory" | "channels",
   ) => void;
   onNavigateToTab?: (tab: "channels" | "cron" | "skills" | "agents" | "config") => void;
   // Right action panel
@@ -250,73 +250,25 @@ function renderDirectory(props: ChatProps) {
   const q = props.hrCoreQuery;
   const res = props.hrCoreSearchResult;
 
-  const loginCard = html`
-    <div class="ahr-card">
-      <div class="ahr-card__title">HR Core 登录</div>
-      <div class="muted ahr-card__sub">
-        右侧搜索与组织树的数据来自 HR Core 数据库，不读取 memory 文档。
-      </div>
-      <div class="form-grid" style="margin-top: 12px;">
-        <label class="field">
-          <span>HR Core Base URL</span>
-          <input
-            class="mono"
-            .value=${baseUrl}
-            placeholder="http://127.0.0.1:3001"
-            @input=${(e: Event) => {
-              const v = (e.target as HTMLInputElement).value;
-              props.onHrCoreSettingsChange({ ...props.hrCoreSettings, baseUrl: v });
-            }}
-          />
-        </label>
-        <label class="field">
-          <span>Token (JWT)</span>
-          <input
-            type="password"
-            class="mono"
-            .value=${props.hrCoreSettings.token}
-            placeholder="paste token"
-            @input=${(e: Event) => {
-              const v = (e.target as HTMLInputElement).value;
-              props.onHrCoreSettingsChange({ ...props.hrCoreSettings, token: v });
-            }}
-          />
-        </label>
-        <div class="muted" style="grid-column: 1 / -1;">
-          或者用账号密码登录（dev seed 默认: <span class="mono">hr001 / hr123456</span>）。
+  if (!token) {
+    return html`
+      <div class="ahr-card">
+        <div class="ahr-card__title">Directory (DB)</div>
+        <div class="muted ahr-card__sub">
+          Directory 只做数据库检索与查看。请在左下角 <b>设置</b> 里登录 HR Core。
         </div>
-        <label class="field">
-          <span>Username</span>
-          <input
-            class="mono"
-            .value=${props.hrCoreLoginUsername}
-            placeholder="hr001"
-            @input=${(e: Event) =>
-              props.onHrCoreLoginUsernameChange((e.target as HTMLInputElement).value)}
-          />
-        </label>
-        <label class="field">
-          <span>Password</span>
-          <input
-            type="password"
-            class="mono"
-            .value=${props.hrCoreLoginPassword}
-            placeholder="hr123456"
-            @input=${(e: Event) =>
-              props.onHrCoreLoginPasswordChange((e.target as HTMLInputElement).value)}
-          />
-        </label>
+        <div class="row" style="margin-top: 12px;">
+          <button
+            class="btn primary"
+            type="button"
+            @click=${() => props.onOpenQuickSettings?.("hrcore")}
+          >
+            ${icons.settings} 去设置登录
+          </button>
+        </div>
       </div>
-      <div class="row" style="margin-top: 12px;">
-        <button class="btn primary" ?disabled=${props.hrCoreLoginBusy} @click=${props.onHrCoreLogin}>
-          ${props.hrCoreLoginBusy ? icons.loader : icons.zap} Login
-        </button>
-        <button class="btn" ?disabled=${!props.hrCoreSettings.token.trim()} @click=${props.onHrCoreLogout}>
-          ${icons.x} Clear token
-        </button>
-      </div>
-    </div>
-  `;
+    `;
+  }
 
   const searchBox = html`
     <div class="ahr-searchbox">
@@ -573,9 +525,11 @@ function renderDirectory(props: ChatProps) {
         <div class="ahr-dir-meta">
           <span class="ahr-badge">DB</span>
           <span class="mono">${baseUrl}</span>
-          <button class="btn btn--sm btn--icon" type="button" @click=${props.onHrCoreLogout} title="Logout">
-            ${icons.x}
-          </button>
+          ${
+            props.hrCoreSettings.user
+              ? html`<span class="muted">${props.hrCoreSettings.user.username} (${props.hrCoreSettings.user.role})</span>`
+              : nothing
+          }
         </div>
       </div>
     `
@@ -583,7 +537,6 @@ function renderDirectory(props: ChatProps) {
     }
 
     ${props.hrCoreError ? html`<div class="callout danger">${props.hrCoreError}</div>` : nothing}
-    ${token ? nothing : loginCard}
     ${token ? results : nothing}
     ${token ? selected : nothing}
     ${token ? orgTree : nothing}
@@ -613,7 +566,9 @@ export function renderChat(props: ChatProps) {
   const sidebarOpen = Boolean(props.sidebarOpen && props.onCloseSidebar);
   const settingsMenuOpen = Boolean(props.settingsMenuOpen && props.onSettingsMenuOpenChange);
 
-  const openQuick = (section: "gateway" | "models" | "skills" | "cron" | "memory" | "channels") => {
+  const openQuick = (
+    section: "gateway" | "hrcore" | "models" | "skills" | "cron" | "memory" | "channels",
+  ) => {
     props.onSettingsMenuOpenChange?.(false);
     props.onOpenQuickSettings?.(section);
   };
@@ -752,6 +707,13 @@ export function renderChat(props: ChatProps) {
                         <span class="ahr-settings__item-left">
                           <span class="ahr-settings__miniicon">${icons.link}</span>
                           连接 Gateway
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("hrcore")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.search}</span>
+                          HR Core 登录/登出
                         </span>
                         <span class="ahr-settings__chev">›</span>
                       </button>
