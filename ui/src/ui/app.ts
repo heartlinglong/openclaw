@@ -221,6 +221,7 @@ export class OpenClawApp extends LitElement {
   // Quick settings overlay (for chat focus mode / fast access)
   @state() quickSettingsOpen = false;
   @state() quickSettingsSection: "models" | "skills" | "cron" | "memory" | "channels" = "models";
+  @state() chatSettingsMenuOpen = false;
 
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;

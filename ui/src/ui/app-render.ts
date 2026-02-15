@@ -173,8 +173,8 @@ export function renderApp(state: AppViewState) {
               <img src="/favicon.svg" alt="OpenClaw" />
             </div>
             <div class="brand-text">
-              <div class="brand-title">OPENCLAW</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-title">AgentHR</div>
+              <div class="brand-sub">Webchat</div>
             </div>
           </div>
         </div>
@@ -233,16 +233,25 @@ export function renderApp(state: AppViewState) {
         </div>
       </aside>
       <main class="content ${isChat ? "content--chat" : ""}">
-        <section class="content-header">
-          <div>
-            <div class="page-title">${titleForTab(state.tab)}</div>
-            <div class="page-sub">${subtitleForTab(state.tab)}</div>
-          </div>
-          <div class="page-meta">
-            ${state.lastError ? html`<div class="pill danger">${state.lastError}</div>` : nothing}
-            ${isChat ? renderChatControls(state) : nothing}
-          </div>
-        </section>
+        ${
+          isChat
+            ? nothing
+            : html`
+                <section class="content-header">
+                  <div>
+                    <div class="page-title">${titleForTab(state.tab)}</div>
+                    <div class="page-sub">${subtitleForTab(state.tab)}</div>
+                  </div>
+                  <div class="page-meta">
+                    ${
+                      state.lastError
+                        ? html`<div class="pill danger">${state.lastError}</div>`
+                        : nothing
+                    }
+                  </div>
+                </section>
+              `
+        }
 
         ${
           state.tab === "overview"
@@ -953,6 +962,23 @@ export function renderApp(state: AppViewState) {
                   (state as unknown as OpenClawApp).handleSplitRatioChange(ratio),
                 assistantName: state.assistantName,
                 assistantAvatar: state.assistantAvatar,
+                settingsMenuOpen: (state as unknown as OpenClawApp).chatSettingsMenuOpen,
+                onSettingsMenuOpenChange: (open: boolean) =>
+                  ((state as unknown as OpenClawApp).chatSettingsMenuOpen = open),
+                onOpenQuickSettings: (section) => {
+                  const app = state as unknown as OpenClawApp;
+                  app.chatSettingsMenuOpen = false;
+                  app.quickSettingsSection = section;
+                  app.quickSettingsOpen = true;
+                },
+                onNavigateToTab: (tab) => {
+                  const app = state as unknown as OpenClawApp;
+                  app.chatSettingsMenuOpen = false;
+                  if (tab === "agents") {
+                    state.agentsPanel = "overview";
+                  }
+                  state.setTab(tab);
+                },
               })
             : nothing
         }
@@ -1045,23 +1071,6 @@ export function renderApp(state: AppViewState) {
             : nothing
         }
       </main>
-      ${
-        isChat
-          ? html`
-              <button
-                class="quick-settings-fab"
-                @click=${() => {
-                  app.quickSettingsSection = "models";
-                  app.quickSettingsOpen = true;
-                }}
-                title="设置"
-              >
-                <span class="quick-settings-fab__icon">${icons.settings}</span>
-                <span class="quick-settings-fab__text">设置</span>
-              </button>
-            `
-          : nothing
-      }
       ${renderExecApprovalPrompt(state)}
       ${renderGatewayUrlConfirmation(state)}
       ${renderQuickSettings({

@@ -50,6 +50,11 @@ export type ChatProps = {
   splitRatio?: number;
   assistantName: string;
   assistantAvatar: string | null;
+  // Chat settings popover
+  settingsMenuOpen?: boolean;
+  onSettingsMenuOpenChange?: (open: boolean) => void;
+  onOpenQuickSettings?: (section: "models" | "skills" | "cron" | "memory" | "channels") => void;
+  onNavigateToTab?: (tab: "channels" | "cron" | "skills" | "agents" | "config") => void;
   // Image attachments
   attachments?: ChatAttachment[];
   onAttachmentsChange?: (attachments: ChatAttachment[]) => void;
@@ -206,6 +211,17 @@ export function renderChat(props: ChatProps) {
 
   const splitRatio = props.splitRatio ?? 0.6;
   const sidebarOpen = Boolean(props.sidebarOpen && props.onCloseSidebar);
+  const settingsMenuOpen = Boolean(props.settingsMenuOpen && props.onSettingsMenuOpenChange);
+
+  const openQuick = (section: "models" | "skills" | "cron" | "memory" | "channels") => {
+    props.onSettingsMenuOpenChange?.(false);
+    props.onOpenQuickSettings?.(section);
+  };
+
+  const navigateTab = (tab: "channels" | "cron" | "skills" | "agents" | "config") => {
+    props.onSettingsMenuOpenChange?.(false);
+    props.onNavigateToTab?.(tab);
+  };
   const thread = html`
     <div
       class="chat-thread cp-chat-thread"
@@ -253,137 +269,153 @@ export function renderChat(props: ChatProps) {
   `;
 
   return html`
-    <section class="card chat cp-chat">
-      ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
-
-      ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
-
-      ${renderCompactionIndicator(props.compactionStatus)}
-
-      ${
-        props.focusMode
-          ? html`
-            <button
-              class="chat-focus-exit"
-              type="button"
-              @click=${props.onToggleFocusMode}
-              aria-label="Exit focus mode"
-              title="Exit focus mode"
-            >
-              ${icons.x}
-            </button>
-          `
-          : nothing
-      }
-
-      <div
-        class="chat-split-container ${sidebarOpen ? "chat-split-container--open" : ""}"
-      >
-        <div
-          class="chat-main"
-          style="flex: ${sidebarOpen ? `0 0 ${splitRatio * 100}%` : "1 1 100%"}"
-        >
-          ${thread}
+    <section class="ahr-main">
+      <div class="ahr-panel ahr-sidebar">
+        <div class="ahr-sidebar__head">
+          <div class="ahr-sidebar__head-row">
+            <div class="ahr-sidebar__title">Threads</div>
+            <button class="btn ahr-chip" type="button" @click=${props.onNewSession}>+ New</button>
+          </div>
+          <div class="ahr-search">Search threads…</div>
         </div>
 
-        ${
-          sidebarOpen
-            ? html`
-              <resizable-divider
-                .splitRatio=${splitRatio}
-                @resize=${(e: CustomEvent) => props.onSplitRatioChange?.(e.detail.splitRatio)}
-              ></resizable-divider>
-              <div class="chat-sidebar">
-                ${renderMarkdownSidebar({
-                  content: props.sidebarContent ?? null,
-                  error: props.sidebarError ?? null,
-                  onClose: props.onCloseSidebar!,
-                  onViewRawText: () => {
-                    if (!props.sidebarContent || !props.onOpenSidebar) {
-                      return;
-                    }
-                    props.onOpenSidebar(`\`\`\`\n${props.sidebarContent}\n\`\`\``);
-                  },
-                })}
-              </div>
-            `
-            : nothing
-        }
-      </div>
+        <div class="ahr-sidebar__list">
+          ${(props.sessions?.sessions ?? []).map((row) => {
+            const active = row.key === props.sessionKey;
+            const label = (row.label || row.displayName || row.key).trim();
+            return html`
+              <button
+                class="ahr-thread ${active ? "active" : ""}"
+                type="button"
+                @click=${() => props.onSessionKeyChange(row.key)}
+                title=${row.key}
+              >
+                <div class="ahr-thread__title">${label}</div>
+                <div class="ahr-thread__meta">
+                  ${row.model ? html`<span class="ahr-thread__pill">${row.model}</span>` : nothing}
+                  <span class="ahr-thread__key mono">${row.key}</span>
+                </div>
+              </button>
+            `;
+          })}
+        </div>
 
-      ${
-        props.queue.length
-          ? html`
-            <div class="chat-queue cp-queue-indicator" role="status" aria-live="polite">
-              <div class="chat-queue__title cp-queue-indicator__count">Queued (${props.queue.length})</div>
-              <div class="chat-queue__list">
-                ${props.queue.map(
-                  (item) => html`
-                    <div class="chat-queue__item">
-                      <div class="chat-queue__text">
-                        ${
-                          item.text ||
-                          (item.attachments?.length ? `Image (${item.attachments.length})` : "")
-                        }
+        <div class="ahr-sidebar__footer">
+          <div class="ahr-settings">
+            <button
+              class="ahr-settings__btn"
+              type="button"
+              @click=${() => props.onSettingsMenuOpenChange?.(!settingsMenuOpen)}
+            >
+              <span class="ahr-settings__icon">${icons.settings}</span>
+              <span>设置</span>
+            </button>
+
+            ${
+              settingsMenuOpen
+                ? html`
+                    <div
+                      class="ahr-settings__backdrop"
+                      @click=${() => props.onSettingsMenuOpenChange?.(false)}
+                    ></div>
+                    <div class="ahr-settings__popover" role="menu" aria-label="Settings">
+                      <div class="ahr-settings__account">
+                        <div class="ahr-settings__avatar">${icons.circle}</div>
+                        <div>
+                          <div class="ahr-settings__account-title">
+                            ${props.assistantName || "Agent"}
+                          </div>
+                          <div class="ahr-settings__account-sub">
+                            ${activeSession?.displayName ?? activeSession?.key ?? "main"}
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        class="btn chat-queue__remove"
-                        type="button"
-                        aria-label="Remove queued message"
-                        @click=${() => props.onQueueRemove(item.id)}
-                      >
-                        ${icons.x}
+                      <div class="ahr-settings__divider"></div>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("models")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.globe}</span>
+                          切换模型
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("skills")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.zap}</span>
+                          写 Skill
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("cron")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.loader}</span>
+                          设置定时作业
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("memory")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.fileText}</span>
+                          修改 Memory
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
+                      <button class="ahr-settings__item" type="button" @click=${() => openQuick("channels")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.link}</span>
+                          配置 Channel
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
+                      </button>
+                      <div class="ahr-settings__divider"></div>
+                      <button class="ahr-settings__item" type="button" @click=${() => navigateTab("config")}>
+                        <span class="ahr-settings__item-left">
+                          <span class="ahr-settings__miniicon">${icons.settings}</span>
+                          Config
+                        </span>
+                        <span class="ahr-settings__chev">›</span>
                       </button>
                     </div>
-                  `,
-                )}
-              </div>
-            </div>
-          `
-          : nothing
-      }
+                  `
+                : nothing
+            }
+          </div>
+        </div>
+      </div>
 
-      ${
-        props.showNewMessages
-          ? html`
-            <button
-              class="chat-new-messages"
-              type="button"
-              @click=${props.onScrollToBottom}
-            >
-              New messages ${icons.arrowDown}
+      <div class="ahr-panel ahr-chat">
+        ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
+        ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
+        ${renderCompactionIndicator(props.compactionStatus)}
+
+        <div class="ahr-chat__head">
+          <div>
+            <div class="ahr-chat__head-title">Thread: ${activeSession?.key ?? props.sessionKey}</div>
+            <div class="ahr-chat__head-sub muted">Direct chat session.</div>
+          </div>
+          <div class="ahr-chat__head-actions">
+            <button class="btn btn--sm" ?disabled=${!props.connected} @click=${props.onRefresh}>
+              Refresh
             </button>
-          `
-          : nothing
-      }
+          </div>
+        </div>
 
-      <div class="chat-compose cp-compose">
-        ${renderAttachmentPreview(props)}
-        <div class="chat-compose__row cp-input-wrapper ${!props.connected ? "cp-input-wrapper--disabled" : ""}" data-has-content=${props.draft.trim().length > 0 ? "true" : "false"}>
-          <label class="field chat-compose__field">
-            <span>Message</span>
+        <div class="ahr-chat__messages">${thread}</div>
+
+        <div class="ahr-chat__compose">
+          ${renderAttachmentPreview(props)}
+          <div class="ahr-compose-row">
             <textarea
-              class="cp-input"
+              class="ahr-compose-input"
               ${ref((el) => el && adjustTextareaHeight(el as HTMLTextAreaElement))}
               .value=${props.draft}
               ?disabled=${!props.connected}
               @keydown=${(e: KeyboardEvent) => {
-                if (e.key !== "Enter") {
-                  return;
-                }
-                if (e.isComposing || e.keyCode === 229) {
-                  return;
-                }
-                if (e.shiftKey) {
-                  return;
-                } // Allow Shift+Enter for line breaks
-                if (!props.connected) {
-                  return;
-                }
+                if (e.key !== "Enter") return;
+                if (e.isComposing || e.keyCode === 229) return;
+                if (e.shiftKey) return;
+                if (!props.connected) return;
                 e.preventDefault();
-                if (canCompose) {
-                  props.onSend();
-                }
+                if (canCompose) props.onSend();
               }}
               @input=${(e: Event) => {
                 const target = e.target as HTMLTextAreaElement;
@@ -393,28 +425,35 @@ export function renderChat(props: ChatProps) {
               @paste=${(e: ClipboardEvent) => handlePaste(e, props)}
               placeholder=${composePlaceholder}
             ></textarea>
-          </label>
-          <div class="chat-compose__actions cp-input-toolbar">
-            <div class="cp-input-toolbar-left">
-              <span class="cp-char-counter">Shift+↵ 换行</span>
-            </div>
-            <div class="cp-input-toolbar-right">
-              <button
-                class="btn cp-btn cp-btn--secondary"
-                ?disabled=${!props.connected || (!canAbort && props.sending)}
-                @click=${canAbort ? props.onAbort : props.onNewSession}
-              >
-                ${canAbort ? "Stop" : "New session"}
-              </button>
-              <button
-                class="btn primary cp-send-btn"
-                ?disabled=${!props.connected}
-                @click=${props.onSend}
-              >
-                ${isBusy ? "Queue" : "Send"}<kbd class="btn-kbd cp-send-btn__shortcut">↵</kbd>
-              </button>
-            </div>
+            <button class="btn primary" ?disabled=${!props.connected} @click=${props.onSend}>
+              ${isBusy ? "Queue" : "Send"}
+            </button>
           </div>
+        </div>
+      </div>
+
+      <div class="ahr-panel ahr-action">
+        <div class="ahr-action__tabs">
+          <button class="ahr-tab active" type="button">Context</button>
+          <button class="ahr-tab" type="button" @click=${() => navigateTab("agents")}>Employees</button>
+          <button class="ahr-tab" type="button" @click=${() => navigateTab("cron")}>Activity</button>
+        </div>
+        <div class="ahr-action__body">
+          ${
+            sidebarOpen
+              ? renderMarkdownSidebar({
+                  content: props.sidebarContent ?? null,
+                  error: props.sidebarError ?? null,
+                  onClose: props.onCloseSidebar!,
+                  onViewRawText: () => {
+                    if (!props.sidebarContent || !props.onOpenSidebar) return;
+                    props.onOpenSidebar(`\`\`\`\n${props.sidebarContent}\n\`\`\``);
+                  },
+                })
+              : html`
+                  <div class="muted">Tool output will appear here.</div>
+                `
+          }
         </div>
       </div>
     </section>
