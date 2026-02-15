@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 import type { SessionsListResult } from "../types.ts";
+import type { GatewaySessionRow } from "../types.ts";
 import type { ChatItem, MessageGroup } from "../types/chat-types.ts";
 import type { ChatAttachment, ChatQueueItem } from "../ui-types.ts";
 import {
@@ -224,6 +225,17 @@ export function renderChat(props: ChatProps) {
     props.onSettingsMenuOpenChange?.(false);
     props.onNavigateToTab?.(tab);
   };
+  const serverSessions = props.sessions?.sessions ?? [];
+  const hasActiveInList = serverSessions.some((row) => row.key === props.sessionKey);
+  const syntheticActive: GatewaySessionRow = {
+    key: props.sessionKey,
+    kind: "direct",
+    label: "New thread",
+    displayName: "New thread",
+    updatedAt: null,
+  };
+  const threads = hasActiveInList ? serverSessions : [syntheticActive, ...serverSessions];
+
   const thread = html`
     <div
       class="chat-thread cp-chat-thread"
@@ -288,7 +300,7 @@ export function renderChat(props: ChatProps) {
         </div>
 
         <div class="ahr-sidebar__list">
-          ${(props.sessions?.sessions ?? []).map((row) => {
+          ${threads.map((row) => {
             const active = row.key === props.sessionKey;
             const label = (row.label || row.displayName || row.key).trim();
             return html`

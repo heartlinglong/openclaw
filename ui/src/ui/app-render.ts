@@ -948,8 +948,7 @@ export function renderApp(state: AppViewState) {
                 canAbort: Boolean(state.chatRunId),
                 onAbort: () => void (state as unknown as OpenClawApp).handleAbortChat(),
                 onQueueRemove: (id) => (state as unknown as OpenClawApp).removeQueuedMessage(id),
-                onNewSession: () =>
-                  (state as unknown as OpenClawApp).handleSendChat("/new", { restoreDraft: true }),
+                onNewSession: () => (state as unknown as OpenClawApp).newThread(),
                 showNewMessages: state.chatNewMessagesBelow,
                 onScrollToBottom: () => state.scrollToBottom(),
                 // Sidebar props for tool output viewing

@@ -44,6 +44,8 @@ import {
 } from "./app-channels.ts";
 import {
   handleAbortChat as handleAbortChatInternal,
+  refreshChatAvatar as refreshChatAvatarInternal,
+  CHAT_SESSIONS_ACTIVE_MINUTES,
   handleSendChat as handleSendChatInternal,
   removeQueuedMessage as removeQueuedMessageInternal,
 } from "./app-chat.ts";
@@ -77,8 +79,11 @@ import {
 } from "./app-tool-stream.ts";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
+import { loadChatHistory as loadChatHistoryInternal } from "./controllers/chat.ts";
+import { loadSessions as loadSessionsInternal } from "./controllers/sessions.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
+import { generateUUID } from "./uuid.ts";
 
 declare global {
   interface Window {
@@ -319,6 +324,34 @@ export class OpenClawApp extends LitElement {
 
   connect() {
     connectGatewayInternal(this as unknown as Parameters<typeof connectGatewayInternal>[0]);
+  }
+
+  newThread() {
+    // "New thread" means switching to a fresh session key, not sending "/new" into the chat.
+    const uuid = generateUUID().split("-")[0] ?? "new";
+    const next = `thread-${Date.now().toString(36)}-${uuid}`;
+    this.sessionKey = next;
+    this.chatMessage = "";
+    this.chatAttachments = [];
+    this.chatMessages = [];
+    this.chatToolMessages = [];
+    this.chatStream = null;
+    this.chatRunId = null;
+    this.chatStreamStartedAt = null;
+    this.chatQueue = [];
+    this.resetToolStream();
+    this.resetChatScroll();
+    this.applySettings({
+      ...this.settings,
+      sessionKey: next,
+      lastActiveSessionKey: next,
+    });
+    void this.loadAssistantIdentity();
+    if (this.connected) {
+      void loadChatHistoryInternal(this);
+      void refreshChatAvatarInternal(this);
+      void loadSessionsInternal(this, { activeMinutes: CHAT_SESSIONS_ACTIVE_MINUTES });
+    }
   }
 
   handleChatScroll(event: Event) {
